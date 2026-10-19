@@ -1,0 +1,6 @@
+{
+    "name": "GitHub repos card",
+    "render_readme": true,
+    "filename": "github-repos-card.js",
+    "homeassistant": "2026.9.3"
+}

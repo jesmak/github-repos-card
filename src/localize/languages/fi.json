@@ -1,0 +1,51 @@
+{
+    "common": {
+        "name": "GitHub-repokortti",
+        "description": "GitHub-integraation seuraamat repot, niiden versiot, seikat, vetopyynnöt ja julkaisemattomat muutokset.",
+        "invalid_configuration": "Virheelliset asetukset. repos ja exclude ovat listoja muodossa omistaja/repo.",
+        "no_repos": "Ei repoja. Lisää ne Home Assistantin GitHub-integraatioon.",
+        "none_shown": "Ei näytettäviä repoja.",
+        "not_followed": "GitHub-integraatio ei seuraa repoa {repo}.",
+        "latest_release": "Viimeisin julkaisu",
+        "unreleased": "Muutoksia tämän julkaisun jälkeen",
+        "quiet_one": "{count} repo ilman tehtävää",
+        "quiet_other": "{count} repoa ilman tehtävää"
+    },
+    "numbers": {
+        "issues_count": "Avoimet seikat",
+        "pulls_count": "Avoimet vetopyynnöt",
+        "merged_pulls_count": "Yhdistetyt vetopyynnöt",
+        "discussions_count": "Keskustelut",
+        "stargazers_count": "Tähdet",
+        "forks_count": "Haaraumat",
+        "subscribers_count": "Seuraajat",
+        "latest_release_downloads": "Viimeisimmän julkaisun lataukset"
+    },
+    "editor": {
+        "title": "Otsikko",
+        "repos": "Repot",
+        "repos_helper": "Vain nämä, muodossa omistaja/repo. Tyhjänä kaikki seuratut repot.",
+        "exclude": "Jätä pois",
+        "exclude_helper": "Repot, joita kortti ei näytä.",
+        "numbers": "Luvut",
+        "show_issues": "Avoimet seikat",
+        "show_pull_requests": "Avoimet vetopyynnöt",
+        "show_merged_pull_requests": "Yhdistetyt vetopyynnöt",
+        "show_discussions": "Keskustelut",
+        "show_stars": "Tähdet",
+        "show_forks": "Haaraumat",
+        "show_watchers": "Seuraajat",
+        "show_downloads": "Viimeisimmän julkaisun lataukset",
+        "folding": "Taitto",
+        "fold_quiet": "Taita repot, joilla ei ole tehtävää",
+        "fold_quiet_helper": "Repot, joilla on tehtävää, tulevat ensin, ja muut taittuvat yhdeksi riviksi, joka avautuu napautuksella.",
+        "todo_issues": "Avoin seikka on tehtävä",
+        "todo_pull_requests": "Avoin vetopyyntö on tehtävä",
+        "todo_unreleased": "Muutokset viimeisimmän julkaisun jälkeen ovat tehtävä",
+        "tap": "Napautus",
+        "tap_github": "Avaa repo GitHubissa",
+        "tap_more_info": "Näytä lisätiedot",
+        "language": "Kieli",
+        "language_helper": "Tyhjänä Home Assistantin kieli."
+    }
+}

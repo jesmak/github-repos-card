@@ -1,0 +1,51 @@
+{
+    "common": {
+        "name": "GitHub repos card",
+        "description": "The repositories the GitHub integration follows, with their versions, issues, pull requests and unreleased commits.",
+        "invalid_configuration": "Invalid configuration. repos and exclude are lists of owner/repo names.",
+        "no_repos": "No repositories. Add them to the GitHub integration in Home Assistant.",
+        "none_shown": "No repositories to show.",
+        "not_followed": "{repo} isn't followed by the GitHub integration.",
+        "latest_release": "Latest release",
+        "unreleased": "Commits after this release",
+        "quiet_one": "{count} repo with nothing to do",
+        "quiet_other": "{count} repos with nothing to do"
+    },
+    "numbers": {
+        "issues_count": "Open issues",
+        "pulls_count": "Open pull requests",
+        "merged_pulls_count": "Merged pull requests",
+        "discussions_count": "Discussions",
+        "stargazers_count": "Stars",
+        "forks_count": "Forks",
+        "subscribers_count": "Watchers",
+        "latest_release_downloads": "Downloads of the latest release"
+    },
+    "editor": {
+        "title": "Title",
+        "repos": "Repositories",
+        "repos_helper": "Only these, as owner/repo. All followed repositories when left empty.",
+        "exclude": "Leave out",
+        "exclude_helper": "Repositories the card doesn't show.",
+        "numbers": "Numbers",
+        "show_issues": "Open issues",
+        "show_pull_requests": "Open pull requests",
+        "show_merged_pull_requests": "Merged pull requests",
+        "show_discussions": "Discussions",
+        "show_stars": "Stars",
+        "show_forks": "Forks",
+        "show_watchers": "Watchers",
+        "show_downloads": "Downloads of the latest release",
+        "folding": "Folding",
+        "fold_quiet": "Fold the repositories with nothing to do",
+        "fold_quiet_helper": "Those with something to do come first, and the rest fold into one line that opens on a tap.",
+        "todo_issues": "An open issue is something to do",
+        "todo_pull_requests": "An open pull request is something to do",
+        "todo_unreleased": "Commits after the latest release are something to do",
+        "tap": "Tap",
+        "tap_github": "Open the repository on GitHub",
+        "tap_more_info": "Show more info",
+        "language": "Language",
+        "language_helper": "Home Assistant's language when left empty."
+    }
+}

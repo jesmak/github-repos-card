@@ -1,0 +1,774 @@
+{
+    "states": {
+        "sensor.github_matti_aurora_card_issues_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "issues"
+            }
+        },
+        "sensor.github_matti_aurora_card_pulls_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "pull requests"
+            }
+        },
+        "sensor.github_matti_aurora_card_stargazers_count": {
+            "state": "14",
+            "attributes": {
+                "unit_of_measurement": "stars"
+            }
+        },
+        "sensor.github_matti_aurora_card_forks_count": {
+            "state": "2",
+            "attributes": {
+                "unit_of_measurement": "forks"
+            }
+        },
+        "sensor.github_matti_aurora_card_subscribers_count": {
+            "state": "3",
+            "attributes": {
+                "unit_of_measurement": "watchers"
+            }
+        },
+        "sensor.github_matti_aurora_card_latest_release": {
+            "state": "2.3.0",
+            "attributes": {
+                "tag": "v2.3.0",
+                "url": "https://github.com/matti/aurora-card/releases/tag/v2.3.0"
+            }
+        },
+        "sensor.github_matti_aurora_card_latest_tag": {
+            "state": "v2.3.0",
+            "attributes": {
+                "url": "https://github.com/matti/aurora-card/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_aurora_card_latest_commit": {
+            "state": "Update the README",
+            "attributes": {
+                "sha": "1111111111111111111111111111111111111111",
+                "url": "https://github.com/matti/aurora-card/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_ferry_departures_issues_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "issues"
+            }
+        },
+        "sensor.github_matti_ferry_departures_pulls_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "pull requests"
+            }
+        },
+        "sensor.github_matti_ferry_departures_stargazers_count": {
+            "state": "6",
+            "attributes": {
+                "unit_of_measurement": "stars"
+            }
+        },
+        "sensor.github_matti_ferry_departures_forks_count": {
+            "state": "1",
+            "attributes": {
+                "unit_of_measurement": "forks"
+            }
+        },
+        "sensor.github_matti_ferry_departures_subscribers_count": {
+            "state": "2",
+            "attributes": {
+                "unit_of_measurement": "watchers"
+            }
+        },
+        "sensor.github_matti_ferry_departures_latest_release": {
+            "state": "1.4.1",
+            "attributes": {
+                "tag": "v1.4.1",
+                "url": "https://github.com/matti/ferry_departures/releases/tag/v1.4.1"
+            }
+        },
+        "sensor.github_matti_ferry_departures_latest_tag": {
+            "state": "v1.4.1",
+            "attributes": {
+                "url": "https://github.com/matti/ferry_departures/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_ferry_departures_latest_commit": {
+            "state": "Update the README",
+            "attributes": {
+                "sha": "2222222222222222222222222222222222222222",
+                "url": "https://github.com/matti/ferry_departures/commit/2222222222222222222222222222222222222222"
+            }
+        },
+        "sensor.github_matti_heating_schedule_issues_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "issues"
+            }
+        },
+        "sensor.github_matti_heating_schedule_pulls_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "pull requests"
+            }
+        },
+        "sensor.github_matti_heating_schedule_stargazers_count": {
+            "state": "2",
+            "attributes": {
+                "unit_of_measurement": "stars"
+            }
+        },
+        "sensor.github_matti_heating_schedule_forks_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "forks"
+            }
+        },
+        "sensor.github_matti_heating_schedule_subscribers_count": {
+            "state": "1",
+            "attributes": {
+                "unit_of_measurement": "watchers"
+            }
+        },
+        "sensor.github_matti_heating_schedule_latest_release": {
+            "state": "0.9.0",
+            "attributes": {
+                "tag": "v0.9.0",
+                "url": "https://github.com/matti/heating-schedule/releases/tag/v0.9.0"
+            }
+        },
+        "sensor.github_matti_heating_schedule_latest_tag": {
+            "state": "v0.9.0",
+            "attributes": {
+                "url": "https://github.com/matti/heating-schedule/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_heating_schedule_latest_commit": {
+            "state": "Update the README",
+            "attributes": {
+                "sha": "1111111111111111111111111111111111111111",
+                "url": "https://github.com/matti/heating-schedule/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_lake_level_issues_count": {
+            "state": "2",
+            "attributes": {
+                "unit_of_measurement": "issues"
+            }
+        },
+        "sensor.github_matti_lake_level_pulls_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "pull requests"
+            }
+        },
+        "sensor.github_matti_lake_level_stargazers_count": {
+            "state": "9",
+            "attributes": {
+                "unit_of_measurement": "stars"
+            }
+        },
+        "sensor.github_matti_lake_level_forks_count": {
+            "state": "1",
+            "attributes": {
+                "unit_of_measurement": "forks"
+            }
+        },
+        "sensor.github_matti_lake_level_subscribers_count": {
+            "state": "2",
+            "attributes": {
+                "unit_of_measurement": "watchers"
+            }
+        },
+        "sensor.github_matti_lake_level_latest_release": {
+            "state": "1.2.0",
+            "attributes": {
+                "tag": "v1.2.0",
+                "url": "https://github.com/matti/lake_level/releases/tag/v1.2.0"
+            }
+        },
+        "sensor.github_matti_lake_level_latest_tag": {
+            "state": "v1.2.0",
+            "attributes": {
+                "url": "https://github.com/matti/lake_level/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_lake_level_latest_commit": {
+            "state": "Update the README",
+            "attributes": {
+                "sha": "1111111111111111111111111111111111111111",
+                "url": "https://github.com/matti/lake_level/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_mailbox_notifier_issues_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "issues"
+            }
+        },
+        "sensor.github_matti_mailbox_notifier_pulls_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "pull requests"
+            }
+        },
+        "sensor.github_matti_mailbox_notifier_stargazers_count": {
+            "state": "31",
+            "attributes": {
+                "unit_of_measurement": "stars"
+            }
+        },
+        "sensor.github_matti_mailbox_notifier_forks_count": {
+            "state": "4",
+            "attributes": {
+                "unit_of_measurement": "forks"
+            }
+        },
+        "sensor.github_matti_mailbox_notifier_subscribers_count": {
+            "state": "5",
+            "attributes": {
+                "unit_of_measurement": "watchers"
+            }
+        },
+        "sensor.github_matti_mailbox_notifier_latest_release": {
+            "state": "3.0.2",
+            "attributes": {
+                "tag": "v3.0.2",
+                "url": "https://github.com/matti/mailbox-notifier/releases/tag/v3.0.2"
+            }
+        },
+        "sensor.github_matti_mailbox_notifier_latest_tag": {
+            "state": "v3.0.2",
+            "attributes": {
+                "url": "https://github.com/matti/mailbox-notifier/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_mailbox_notifier_latest_commit": {
+            "state": "Update the README",
+            "attributes": {
+                "sha": "1111111111111111111111111111111111111111",
+                "url": "https://github.com/matti/mailbox-notifier/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_sauna_sensor_issues_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "issues"
+            }
+        },
+        "sensor.github_matti_sauna_sensor_pulls_count": {
+            "state": "1",
+            "attributes": {
+                "unit_of_measurement": "pull requests"
+            }
+        },
+        "sensor.github_matti_sauna_sensor_stargazers_count": {
+            "state": "3",
+            "attributes": {
+                "unit_of_measurement": "stars"
+            }
+        },
+        "sensor.github_matti_sauna_sensor_forks_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "forks"
+            }
+        },
+        "sensor.github_matti_sauna_sensor_subscribers_count": {
+            "state": "1",
+            "attributes": {
+                "unit_of_measurement": "watchers"
+            }
+        },
+        "sensor.github_matti_sauna_sensor_latest_release": {
+            "state": "1.0.0",
+            "attributes": {
+                "tag": "v1.0.0",
+                "url": "https://github.com/matti/sauna_sensor/releases/tag/v1.0.0"
+            }
+        },
+        "sensor.github_matti_sauna_sensor_latest_tag": {
+            "state": "v1.0.0",
+            "attributes": {
+                "url": "https://github.com/matti/sauna_sensor/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_sauna_sensor_latest_commit": {
+            "state": "Update the README",
+            "attributes": {
+                "sha": "1111111111111111111111111111111111111111",
+                "url": "https://github.com/matti/sauna_sensor/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_matti_snow_depth_card_issues_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "issues"
+            }
+        },
+        "sensor.github_matti_snow_depth_card_pulls_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "pull requests"
+            }
+        },
+        "sensor.github_matti_snow_depth_card_stargazers_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "stars"
+            }
+        },
+        "sensor.github_matti_snow_depth_card_forks_count": {
+            "state": "0",
+            "attributes": {
+                "unit_of_measurement": "forks"
+            }
+        },
+        "sensor.github_matti_snow_depth_card_subscribers_count": {
+            "state": "1",
+            "attributes": {
+                "unit_of_measurement": "watchers"
+            }
+        },
+        "sensor.github_matti_snow_depth_card_latest_release": {
+            "state": "unavailable",
+            "attributes": {}
+        },
+        "sensor.github_matti_snow_depth_card_latest_tag": {
+            "state": "unavailable",
+            "attributes": {}
+        },
+        "sensor.github_matti_snow_depth_card_latest_commit": {
+            "state": "Update the README",
+            "attributes": {
+                "sha": "1111111111111111111111111111111111111111",
+                "url": "https://github.com/matti/snow-depth-card/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_example_org_weather_stations_issues_count": {
+            "state": "14",
+            "attributes": {
+                "unit_of_measurement": "issues"
+            }
+        },
+        "sensor.github_example_org_weather_stations_pulls_count": {
+            "state": "3",
+            "attributes": {
+                "unit_of_measurement": "pull requests"
+            }
+        },
+        "sensor.github_example_org_weather_stations_stargazers_count": {
+            "state": "1240",
+            "attributes": {
+                "unit_of_measurement": "stars"
+            }
+        },
+        "sensor.github_example_org_weather_stations_forks_count": {
+            "state": "88",
+            "attributes": {
+                "unit_of_measurement": "forks"
+            }
+        },
+        "sensor.github_example_org_weather_stations_subscribers_count": {
+            "state": "41",
+            "attributes": {
+                "unit_of_measurement": "watchers"
+            }
+        },
+        "sensor.github_example_org_weather_stations_latest_release": {
+            "state": "5.12.0",
+            "attributes": {
+                "tag": "v5.12.0",
+                "url": "https://github.com/example-org/weather-stations/releases/tag/v5.12.0"
+            }
+        },
+        "sensor.github_example_org_weather_stations_latest_tag": {
+            "state": "v5.12.0",
+            "attributes": {
+                "url": "https://github.com/example-org/weather-stations/commit/1111111111111111111111111111111111111111"
+            }
+        },
+        "sensor.github_example_org_weather_stations_latest_commit": {
+            "state": "Update the README",
+            "attributes": {
+                "sha": "2222222222222222222222222222222222222222",
+                "url": "https://github.com/example-org/weather-stations/commit/2222222222222222222222222222222222222222"
+            }
+        }
+    },
+    "entities": {
+        "sensor.github_matti_aurora_card_issues_count": {
+            "device_id": "device_0",
+            "platform": "github",
+            "translation_key": "issues_count"
+        },
+        "sensor.github_matti_aurora_card_pulls_count": {
+            "device_id": "device_0",
+            "platform": "github",
+            "translation_key": "pulls_count"
+        },
+        "sensor.github_matti_aurora_card_stargazers_count": {
+            "device_id": "device_0",
+            "platform": "github",
+            "translation_key": "stargazers_count"
+        },
+        "sensor.github_matti_aurora_card_forks_count": {
+            "device_id": "device_0",
+            "platform": "github",
+            "translation_key": "forks_count"
+        },
+        "sensor.github_matti_aurora_card_subscribers_count": {
+            "device_id": "device_0",
+            "platform": "github",
+            "translation_key": "subscribers_count"
+        },
+        "sensor.github_matti_aurora_card_latest_release": {
+            "device_id": "device_0",
+            "platform": "github",
+            "translation_key": "latest_release"
+        },
+        "sensor.github_matti_aurora_card_latest_tag": {
+            "device_id": "device_0",
+            "platform": "github",
+            "translation_key": "latest_tag"
+        },
+        "sensor.github_matti_aurora_card_latest_commit": {
+            "device_id": "device_0",
+            "platform": "github",
+            "translation_key": "latest_commit"
+        },
+        "sensor.github_matti_ferry_departures_issues_count": {
+            "device_id": "device_1",
+            "platform": "github",
+            "translation_key": "issues_count"
+        },
+        "sensor.github_matti_ferry_departures_pulls_count": {
+            "device_id": "device_1",
+            "platform": "github",
+            "translation_key": "pulls_count"
+        },
+        "sensor.github_matti_ferry_departures_stargazers_count": {
+            "device_id": "device_1",
+            "platform": "github",
+            "translation_key": "stargazers_count"
+        },
+        "sensor.github_matti_ferry_departures_forks_count": {
+            "device_id": "device_1",
+            "platform": "github",
+            "translation_key": "forks_count"
+        },
+        "sensor.github_matti_ferry_departures_subscribers_count": {
+            "device_id": "device_1",
+            "platform": "github",
+            "translation_key": "subscribers_count"
+        },
+        "sensor.github_matti_ferry_departures_latest_release": {
+            "device_id": "device_1",
+            "platform": "github",
+            "translation_key": "latest_release"
+        },
+        "sensor.github_matti_ferry_departures_latest_tag": {
+            "device_id": "device_1",
+            "platform": "github",
+            "translation_key": "latest_tag"
+        },
+        "sensor.github_matti_ferry_departures_latest_commit": {
+            "device_id": "device_1",
+            "platform": "github",
+            "translation_key": "latest_commit"
+        },
+        "sensor.github_matti_heating_schedule_issues_count": {
+            "device_id": "device_2",
+            "platform": "github",
+            "translation_key": "issues_count"
+        },
+        "sensor.github_matti_heating_schedule_pulls_count": {
+            "device_id": "device_2",
+            "platform": "github",
+            "translation_key": "pulls_count"
+        },
+        "sensor.github_matti_heating_schedule_stargazers_count": {
+            "device_id": "device_2",
+            "platform": "github",
+            "translation_key": "stargazers_count"
+        },
+        "sensor.github_matti_heating_schedule_forks_count": {
+            "device_id": "device_2",
+            "platform": "github",
+            "translation_key": "forks_count"
+        },
+        "sensor.github_matti_heating_schedule_subscribers_count": {
+            "device_id": "device_2",
+            "platform": "github",
+            "translation_key": "subscribers_count"
+        },
+        "sensor.github_matti_heating_schedule_latest_release": {
+            "device_id": "device_2",
+            "platform": "github",
+            "translation_key": "latest_release"
+        },
+        "sensor.github_matti_heating_schedule_latest_tag": {
+            "device_id": "device_2",
+            "platform": "github",
+            "translation_key": "latest_tag"
+        },
+        "sensor.github_matti_heating_schedule_latest_commit": {
+            "device_id": "device_2",
+            "platform": "github",
+            "translation_key": "latest_commit"
+        },
+        "sensor.github_matti_lake_level_issues_count": {
+            "device_id": "device_3",
+            "platform": "github",
+            "translation_key": "issues_count"
+        },
+        "sensor.github_matti_lake_level_pulls_count": {
+            "device_id": "device_3",
+            "platform": "github",
+            "translation_key": "pulls_count"
+        },
+        "sensor.github_matti_lake_level_stargazers_count": {
+            "device_id": "device_3",
+            "platform": "github",
+            "translation_key": "stargazers_count"
+        },
+        "sensor.github_matti_lake_level_forks_count": {
+            "device_id": "device_3",
+            "platform": "github",
+            "translation_key": "forks_count"
+        },
+        "sensor.github_matti_lake_level_subscribers_count": {
+            "device_id": "device_3",
+            "platform": "github",
+            "translation_key": "subscribers_count"
+        },
+        "sensor.github_matti_lake_level_latest_release": {
+            "device_id": "device_3",
+            "platform": "github",
+            "translation_key": "latest_release"
+        },
+        "sensor.github_matti_lake_level_latest_tag": {
+            "device_id": "device_3",
+            "platform": "github",
+            "translation_key": "latest_tag"
+        },
+        "sensor.github_matti_lake_level_latest_commit": {
+            "device_id": "device_3",
+            "platform": "github",
+            "translation_key": "latest_commit"
+        },
+        "sensor.github_matti_mailbox_notifier_issues_count": {
+            "device_id": "device_4",
+            "platform": "github",
+            "translation_key": "issues_count"
+        },
+        "sensor.github_matti_mailbox_notifier_pulls_count": {
+            "device_id": "device_4",
+            "platform": "github",
+            "translation_key": "pulls_count"
+        },
+        "sensor.github_matti_mailbox_notifier_stargazers_count": {
+            "device_id": "device_4",
+            "platform": "github",
+            "translation_key": "stargazers_count"
+        },
+        "sensor.github_matti_mailbox_notifier_forks_count": {
+            "device_id": "device_4",
+            "platform": "github",
+            "translation_key": "forks_count"
+        },
+        "sensor.github_matti_mailbox_notifier_subscribers_count": {
+            "device_id": "device_4",
+            "platform": "github",
+            "translation_key": "subscribers_count"
+        },
+        "sensor.github_matti_mailbox_notifier_latest_release": {
+            "device_id": "device_4",
+            "platform": "github",
+            "translation_key": "latest_release"
+        },
+        "sensor.github_matti_mailbox_notifier_latest_tag": {
+            "device_id": "device_4",
+            "platform": "github",
+            "translation_key": "latest_tag"
+        },
+        "sensor.github_matti_mailbox_notifier_latest_commit": {
+            "device_id": "device_4",
+            "platform": "github",
+            "translation_key": "latest_commit"
+        },
+        "sensor.github_matti_sauna_sensor_issues_count": {
+            "device_id": "device_5",
+            "platform": "github",
+            "translation_key": "issues_count"
+        },
+        "sensor.github_matti_sauna_sensor_pulls_count": {
+            "device_id": "device_5",
+            "platform": "github",
+            "translation_key": "pulls_count"
+        },
+        "sensor.github_matti_sauna_sensor_stargazers_count": {
+            "device_id": "device_5",
+            "platform": "github",
+            "translation_key": "stargazers_count"
+        },
+        "sensor.github_matti_sauna_sensor_forks_count": {
+            "device_id": "device_5",
+            "platform": "github",
+            "translation_key": "forks_count"
+        },
+        "sensor.github_matti_sauna_sensor_subscribers_count": {
+            "device_id": "device_5",
+            "platform": "github",
+            "translation_key": "subscribers_count"
+        },
+        "sensor.github_matti_sauna_sensor_latest_release": {
+            "device_id": "device_5",
+            "platform": "github",
+            "translation_key": "latest_release"
+        },
+        "sensor.github_matti_sauna_sensor_latest_tag": {
+            "device_id": "device_5",
+            "platform": "github",
+            "translation_key": "latest_tag"
+        },
+        "sensor.github_matti_sauna_sensor_latest_commit": {
+            "device_id": "device_5",
+            "platform": "github",
+            "translation_key": "latest_commit"
+        },
+        "sensor.github_matti_snow_depth_card_issues_count": {
+            "device_id": "device_6",
+            "platform": "github",
+            "translation_key": "issues_count"
+        },
+        "sensor.github_matti_snow_depth_card_pulls_count": {
+            "device_id": "device_6",
+            "platform": "github",
+            "translation_key": "pulls_count"
+        },
+        "sensor.github_matti_snow_depth_card_stargazers_count": {
+            "device_id": "device_6",
+            "platform": "github",
+            "translation_key": "stargazers_count"
+        },
+        "sensor.github_matti_snow_depth_card_forks_count": {
+            "device_id": "device_6",
+            "platform": "github",
+            "translation_key": "forks_count"
+        },
+        "sensor.github_matti_snow_depth_card_subscribers_count": {
+            "device_id": "device_6",
+            "platform": "github",
+            "translation_key": "subscribers_count"
+        },
+        "sensor.github_matti_snow_depth_card_latest_release": {
+            "device_id": "device_6",
+            "platform": "github",
+            "translation_key": "latest_release"
+        },
+        "sensor.github_matti_snow_depth_card_latest_tag": {
+            "device_id": "device_6",
+            "platform": "github",
+            "translation_key": "latest_tag"
+        },
+        "sensor.github_matti_snow_depth_card_latest_commit": {
+            "device_id": "device_6",
+            "platform": "github",
+            "translation_key": "latest_commit"
+        },
+        "sensor.github_example_org_weather_stations_issues_count": {
+            "device_id": "device_7",
+            "platform": "github",
+            "translation_key": "issues_count"
+        },
+        "sensor.github_example_org_weather_stations_pulls_count": {
+            "device_id": "device_7",
+            "platform": "github",
+            "translation_key": "pulls_count"
+        },
+        "sensor.github_example_org_weather_stations_stargazers_count": {
+            "device_id": "device_7",
+            "platform": "github",
+            "translation_key": "stargazers_count"
+        },
+        "sensor.github_example_org_weather_stations_forks_count": {
+            "device_id": "device_7",
+            "platform": "github",
+            "translation_key": "forks_count"
+        },
+        "sensor.github_example_org_weather_stations_subscribers_count": {
+            "device_id": "device_7",
+            "platform": "github",
+            "translation_key": "subscribers_count"
+        },
+        "sensor.github_example_org_weather_stations_latest_release": {
+            "device_id": "device_7",
+            "platform": "github",
+            "translation_key": "latest_release"
+        },
+        "sensor.github_example_org_weather_stations_latest_tag": {
+            "device_id": "device_7",
+            "platform": "github",
+            "translation_key": "latest_tag"
+        },
+        "sensor.github_example_org_weather_stations_latest_commit": {
+            "device_id": "device_7",
+            "platform": "github",
+            "translation_key": "latest_commit"
+        }
+    },
+    "devices": {
+        "device_0": {
+            "name": "matti/aurora-card"
+        },
+        "device_1": {
+            "name": "matti/ferry_departures"
+        },
+        "device_2": {
+            "name": "matti/heating-schedule"
+        },
+        "device_3": {
+            "name": "matti/lake_level"
+        },
+        "device_4": {
+            "name": "matti/mailbox-notifier"
+        },
+        "device_5": {
+            "name": "matti/sauna_sensor"
+        },
+        "device_6": {
+            "name": "matti/snow-depth-card"
+        },
+        "device_7": {
+            "name": "example-org/weather-stations"
+        }
+    },
+    "shots": [
+        {
+            "name": "folded",
+            "width": 480,
+            "card": {
+                "type": "custom:github-repos-card",
+                "title": "Code",
+                "fold_quiet": true
+            }
+        },
+        {
+            "name": "all",
+            "width": 480,
+            "card": {
+                "type": "custom:github-repos-card",
+                "title": "Code"
+            }
+        },
+        {
+            "name": "narrow",
+            "width": 240,
+            "card": {
+                "type": "custom:github-repos-card",
+                "repos": ["matti/aurora-card", "matti/ferry_departures", "matti/lake_level", "example-org/weather-stations"]
+            }
+        }
+    ]
+}
