@@ -1,6 +1,6 @@
 {
     "name": "github-repos-card",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Home Assistant dashboard card for the repositories the GitHub integration follows, with their versions, issues, pull requests and unreleased commits at a glance",
     "keywords": [
         "home-assistant",

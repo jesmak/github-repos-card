@@ -3,6 +3,7 @@
         "name": "GitHub-repokortti",
         "description": "GitHub-integraation seuraamat repot, niiden versiot, seikat, vetopyynnöt ja julkaisemattomat muutokset.",
         "invalid_configuration": "Virheelliset asetukset. repos ja exclude ovat listoja muodossa omistaja/repo.",
+        "invalid_height": "Virheellinen korkeus. Korkeuksien (height ja max_height) on oltava positiivisia lukuja pikseleinä, ja korkeustilan (height_mode) auto, fixed tai max.",
         "no_repos": "Ei repoja. Lisää ne Home Assistantin GitHub-integraatioon.",
         "none_shown": "Ei näytettäviä repoja.",
         "not_followed": "GitHub-integraatio ei seuraa repoa {repo}.",
@@ -46,6 +47,15 @@
         "tap_github": "Avaa repo GitHubissa",
         "tap_more_info": "Näytä lisätiedot",
         "language": "Kieli",
-        "language_helper": "Tyhjänä Home Assistantin kieli."
+        "language_helper": "Tyhjänä Home Assistantin kieli.",
+        "height_mode": "Korkeus",
+        "height_mode_helper": "Osioihin jaetun näkymän asettelu-välilehdellä asetettu korkeus ohittaa tämän.",
+        "height_mode_auto": "Sisällön mukaan",
+        "height_mode_fixed": "Kiinteä",
+        "height_mode_max": "Kasvaa rajaan asti",
+        "height": "Kiinteä korkeus",
+        "height_helper": "Kortti on aina näin korkea, ja lista vierii sen sisällä.",
+        "max_height": "Enimmäiskorkeus",
+        "max_height_helper": "Kortti kasvaa sisältönsä mukana tähän korkeuteen asti, ja sen jälkeen lista vierii."
     }
 }

@@ -10,7 +10,9 @@ import { customElement, property, state } from "lit/decorators.js";
 import { CARD_VERSION, DEFAULT_TAP } from "./const";
 import type { NumberKey } from "./const";
 import "./editor";
+import { ScrollFade, fadeStyles } from "./fade";
 import type { HomeAssistant } from "./hass";
+import { gridMinRows, heightCardSize, heightStyle, validHeight } from "./height";
 import { browserLanguage, translate } from "./localize/localize";
 import { formatNumber, githubSensors, hasTodo, reposOf, selectRepos, shownNumbers } from "./repos";
 import type { GithubReposCardConfig, Repo } from "./types";
@@ -42,10 +44,17 @@ registry.customCards.push({
 @customElement("github-repos-card")
 export class GithubReposCard extends LitElement {
     @property({ attribute: false }) public hass?: HomeAssistant;
+    @property({ attribute: false }) public layout?: string;
     @state() private config?: GithubReposCardConfig;
     @state() private open = false;
     private sensors: string[] = [];
     private sensorsOf?: HomeAssistant["entities"];
+
+    constructor() {
+        super();
+        // Fades the list's edges while the card is held to a height, through the card's own lifecycle.
+        new ScrollFade(this, () => (this.heightStyle() ? this.renderRoot.querySelectorAll<HTMLElement>(".repos") : []));
+    }
 
     public static getConfigElement(): HTMLElement {
         return document.createElement("github-repos-card-editor");
@@ -64,16 +73,35 @@ export class GithubReposCard extends LitElement {
         ) {
             throw new Error(translate(browserLanguage(), "common.invalid_configuration"));
         }
+        if (!validHeight(config)) {
+            throw new Error(translate(browserLanguage(), "common.invalid_height"));
+        }
         this.config = { ...config };
     }
 
     public getCardSize(): number {
-        return 1 + (this.hass && this.config ? selectRepos(reposOf(this.hass), this.config).shown.length : 3);
+        return heightCardSize(
+            this.config ?? {},
+            1 + (this.hass && this.config ? selectRepos(reposOf(this.hass), this.config).shown.length : 3),
+            this.minimumHeight(),
+        );
     }
 
     /** In a sections view the card takes a whole section by default and is never narrower than half of one. */
     public getGridOptions(): Record<string, unknown> {
-        return { columns: 12, min_columns: 6, rows: "auto" };
+        return { columns: 12, min_columns: 6, rows: "auto", min_rows: gridMinRows(this.minimumHeight()) };
+    }
+
+    // In pixels, the lowest a card held to a height gets: its padding, the title when it has one, and one repo with its
+    // line of numbers when any are shown, as measured on a full section's width.
+    private minimumHeight(): number {
+        const title = this.config?.title ? 35 : 0;
+        const numbers = this.config && shownNumbers(this.config).length ? 23 : 0;
+        return 18 + title + 36 + numbers;
+    }
+
+    private heightStyle(): string {
+        return heightStyle(this.config ?? {}, this.layout, this.minimumHeight());
     }
 
     protected shouldUpdate(changed: PropertyValues): boolean {
@@ -106,7 +134,7 @@ export class GithubReposCard extends LitElement {
         const quiet = config.fold_quiet ? shown.filter((repo) => !hasTodo(repo, config)) : [];
         const columns = this.columns(shown);
         return html`
-            <ha-card>
+            <ha-card style=${this.heightStyle()}>
                 ${config.title ? html`<h1 class="card-title">${config.title}</h1>` : nothing}
                 ${missing.map((name) => html`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
                 ${empty ? html`<div class="message">${this.text(empty)}</div>` : nothing}
@@ -189,188 +217,216 @@ export class GithubReposCard extends LitElement {
     }
 
     static get styles(): CSSResultGroup {
-        return css`
-            ha-card {
-                container-type: inline-size;
-                padding: 12px 0 6px;
-                font-variant-numeric: tabular-nums;
-                --column-width: 52px;
-                --github-repos-issues: var(--github-repos-issues-color, #2da44e);
-                --github-repos-pulls: var(--github-repos-pulls-color, #8957e5);
-                --github-repos-unreleased: var(--github-repos-unreleased-color, var(--warning-color, #ff9800));
-            }
-
-            .card-title {
-                margin: 0 16px 6px;
-                font-size: var(--ha-card-header-font-size, 24px);
-                font-weight: var(--ha-font-weight-normal, 400);
-                line-height: 1.2;
-            }
-
-            .message {
-                padding: 6px 16px;
-                color: var(--secondary-text-color);
-            }
-
-            .repo,
-            .fold {
-                display: block;
-                box-sizing: border-box;
-                width: 100%;
-                padding: 7px 16px 8px;
-                border: none;
-                border-top: 1px solid var(--divider-color);
-                background: none;
-                color: inherit;
-                font: inherit;
-                text-align: left;
-                text-decoration: none;
-                cursor: pointer;
-            }
-
-            .repos > :first-child {
-                border-top: none;
-            }
-
-            .repo:hover,
-            .fold:hover {
-                background: color-mix(in srgb, var(--primary-text-color) 5%, transparent);
-            }
-
-            .top {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-
-            /* The owner gives way first, cut short, and the name last, wrapping rather than cut: a name cut short is another repo. */
-            .full-name {
-                flex: 1;
-                min-width: 0;
-                display: flex;
-                font-size: 14px;
-            }
-
-            .owner {
-                flex: 0 1 auto;
-                min-width: 1.2em;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                color: var(--secondary-text-color);
-                opacity: 0.8;
-            }
-
-            /* The name never shrinks, so only the owner does, and it wraps only once the owner is down to its minimum. */
-            .name {
-                flex: none;
-                max-width: calc(100% - 1.2em);
-                font-weight: var(--ha-font-weight-medium, 500);
-                overflow-wrap: anywhere;
-            }
-
-            .version {
-                flex: none;
-                min-width: 44px;
-                box-sizing: border-box;
-                padding: 1px 7px;
-                border-radius: 10px;
-                background: color-mix(in srgb, var(--primary-text-color) 10%, transparent);
-                font-size: 12px;
-                text-align: center;
-                white-space: nowrap;
-            }
-
-            .version.unreleased {
-                background: color-mix(in srgb, var(--github-repos-unreleased) 22%, transparent);
-                color: color-mix(in srgb, var(--github-repos-unreleased) 75%, var(--primary-text-color));
-            }
-
-            /* Fixed widths, the same in every entry, so the numbers line up down the list and wrap alike on a narrow card. */
-            .numbers {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 2px 4px;
-                margin-top: 3px;
-            }
-
-            /* As wide as the column's widest number and its icon need, never narrower than a column's minimum. */
-            .number {
-                box-sizing: border-box;
-                width: max(var(--column-width), calc(var(--chars) * 1ch + 20px));
-                display: inline-flex;
-                align-items: center;
-                gap: 3px;
-                font-size: 13px;
-                white-space: nowrap;
-                color: var(--secondary-text-color);
-            }
-
-            .number ha-icon {
-                --mdc-icon-size: 16px;
-                width: 16px;
-                height: 16px;
-                display: inline-flex;
-                flex: none;
-            }
-
-            .number.zero {
-                opacity: 0.6;
-            }
-
-            .number.issues {
-                color: var(--github-repos-issues);
-            }
-
-            .number.pulls {
-                color: var(--github-repos-pulls);
-            }
-
-            .fold {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding: 9px 16px;
-                font-size: 13px;
-                color: var(--secondary-text-color);
-            }
-
-            .fold ha-icon {
-                --mdc-icon-size: 16px;
-                width: 16px;
-                height: 16px;
-                display: inline-flex;
-                flex: none;
-            }
-
-            .fold .chevron {
-                margin-left: auto;
-                transition: transform 0.2s;
-            }
-
-            .fold.open .chevron {
-                transform: rotate(180deg);
-            }
-
-            /* The card is the container, so the narrow layout styles what is inside it, never ha-card itself. */
-            @container (max-width: 299px) {
-                .numbers {
-                    --column-width: 34px;
+        return [
+            css`
+                /* A column, so that with a height of its own the title and the messages stay put and the list scrolls. */
+                ha-card {
+                    box-sizing: border-box;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                    container-type: inline-size;
+                    padding: 12px 0 6px;
+                    font-variant-numeric: tabular-nums;
+                    --column-width: 52px;
+                    --github-repos-issues: var(--github-repos-issues-color, #2da44e);
+                    --github-repos-pulls: var(--github-repos-pulls-color, #8957e5);
+                    --github-repos-unreleased: var(--github-repos-unreleased-color, var(--warning-color, #ff9800));
                 }
 
-                .repo,
-                .fold,
+                .card-title,
                 .message {
-                    padding-left: 12px;
-                    padding-right: 12px;
+                    flex: none;
+                }
+
+                .repos {
+                    flex: 1 1 auto;
+                    min-height: 0;
+                    overflow-y: auto;
+                    overscroll-behavior: contain;
+                    scrollbar-width: thin;
                 }
 
                 .card-title {
-                    margin-left: 12px;
-                    margin-right: 12px;
+                    margin: 0 16px 6px;
+                    font-size: var(--ha-card-header-font-size, 24px);
+                    font-weight: var(--ha-font-weight-normal, 400);
+                    line-height: 1.2;
                 }
-            }
-        `;
+
+                .message {
+                    padding: 6px 16px;
+                    color: var(--secondary-text-color);
+                }
+
+                .repo,
+                .fold {
+                    display: block;
+                    box-sizing: border-box;
+                    width: 100%;
+                    padding: 7px 16px 8px;
+                    border: none;
+                    border-top: 1px solid var(--divider-color);
+                    background: none;
+                    color: inherit;
+                    font: inherit;
+                    text-align: left;
+                    text-decoration: none;
+                    cursor: pointer;
+                }
+
+                /* Inside the row, as the list scrolls and so clips whatever is drawn outside it. */
+                .repo:focus-visible,
+                .fold:focus-visible {
+                    outline: 2px solid var(--primary-color);
+                    outline-offset: -2px;
+                }
+
+                .repos > :first-child {
+                    border-top: none;
+                }
+
+                .repo:hover,
+                .fold:hover {
+                    background: color-mix(in srgb, var(--primary-text-color) 5%, transparent);
+                }
+
+                .top {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                /* The owner gives way first, cut short, and the name last, wrapping rather than cut: a name cut short is another repo. */
+                .full-name {
+                    flex: 1;
+                    min-width: 0;
+                    display: flex;
+                    font-size: 14px;
+                }
+
+                .owner {
+                    flex: 0 1 auto;
+                    min-width: 1.2em;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    color: var(--secondary-text-color);
+                    opacity: 0.8;
+                }
+
+                /* The name never shrinks, so only the owner does, and it wraps only once the owner is down to its minimum. */
+                .name {
+                    flex: none;
+                    max-width: calc(100% - 1.2em);
+                    font-weight: var(--ha-font-weight-medium, 500);
+                    overflow-wrap: anywhere;
+                }
+
+                .version {
+                    flex: none;
+                    min-width: 44px;
+                    box-sizing: border-box;
+                    padding: 1px 7px;
+                    border-radius: 10px;
+                    background: color-mix(in srgb, var(--primary-text-color) 10%, transparent);
+                    font-size: 12px;
+                    text-align: center;
+                    white-space: nowrap;
+                }
+
+                .version.unreleased {
+                    background: color-mix(in srgb, var(--github-repos-unreleased) 22%, transparent);
+                    color: color-mix(in srgb, var(--github-repos-unreleased) 75%, var(--primary-text-color));
+                }
+
+                /* Fixed widths, the same in every entry, so the numbers line up down the list and wrap alike on a narrow card. */
+                .numbers {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 2px 4px;
+                    margin-top: 3px;
+                }
+
+                /* As wide as the column's widest number and its icon need, never narrower than a column's minimum. */
+                .number {
+                    box-sizing: border-box;
+                    width: max(var(--column-width), calc(var(--chars) * 1ch + 20px));
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 3px;
+                    font-size: 13px;
+                    white-space: nowrap;
+                    color: var(--secondary-text-color);
+                }
+
+                .number ha-icon {
+                    --mdc-icon-size: 16px;
+                    width: 16px;
+                    height: 16px;
+                    display: inline-flex;
+                    flex: none;
+                }
+
+                .number.zero {
+                    opacity: 0.6;
+                }
+
+                .number.issues {
+                    color: var(--github-repos-issues);
+                }
+
+                .number.pulls {
+                    color: var(--github-repos-pulls);
+                }
+
+                .fold {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 9px 16px;
+                    font-size: 13px;
+                    color: var(--secondary-text-color);
+                }
+
+                .fold ha-icon {
+                    --mdc-icon-size: 16px;
+                    width: 16px;
+                    height: 16px;
+                    display: inline-flex;
+                    flex: none;
+                }
+
+                .fold .chevron {
+                    margin-left: auto;
+                    transition: transform 0.2s;
+                }
+
+                .fold.open .chevron {
+                    transform: rotate(180deg);
+                }
+
+                /* The card is the container, so the narrow layout styles what is inside it, never ha-card itself. */
+                @container (max-width: 299px) {
+                    .numbers {
+                        --column-width: 34px;
+                    }
+
+                    .repo,
+                    .fold,
+                    .message {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                    }
+
+                    .card-title {
+                        margin-left: 12px;
+                        margin-right: 12px;
+                    }
+                }
+            `,
+            fadeStyles,
+        ];
     }
 }
 

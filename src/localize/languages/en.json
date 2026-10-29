@@ -3,6 +3,7 @@
         "name": "GitHub repos card",
         "description": "The repositories the GitHub integration follows, with their versions, issues, pull requests and unreleased commits.",
         "invalid_configuration": "Invalid configuration. repos and exclude are lists of owner/repo names.",
+        "invalid_height": "Invalid height. height and max_height must be positive numbers of pixels, and height_mode auto, fixed or max.",
         "no_repos": "No repositories. Add them to the GitHub integration in Home Assistant.",
         "none_shown": "No repositories to show.",
         "not_followed": "{repo} isn't followed by the GitHub integration.",
@@ -46,6 +47,15 @@
         "tap_github": "Open the repository on GitHub",
         "tap_more_info": "Show more info",
         "language": "Language",
-        "language_helper": "Home Assistant's language when left empty."
+        "language_helper": "Home Assistant's language when left empty.",
+        "height_mode": "Height",
+        "height_mode_helper": "A height set in the layout tab of a sections view is used instead.",
+        "height_mode_auto": "Fits the content",
+        "height_mode_fixed": "Fixed",
+        "height_mode_max": "Grows up to a limit",
+        "height": "Fixed height",
+        "height_helper": "The card is always this tall, and the list scrolls inside it.",
+        "max_height": "Maximum height",
+        "max_height_helper": "The card grows with its content up to this height, and then the list scrolls."
     }
 }

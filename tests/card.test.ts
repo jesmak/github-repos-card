@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import "../src/github-repos-card";
 import type { GithubReposCard } from "../src/github-repos-card";
 import type { HomeAssistant } from "../src/hass";
+import { browserLanguage, translate } from "../src/localize/localize";
 import type { GithubReposCardConfig } from "../src/types";
 import { fakeHass } from "./fixture";
 
@@ -14,10 +15,11 @@ const HASS = fakeHass([
     { fullName: "matti/mailbox", release: "v1.0.0" },
 ]);
 
-async function card(config: Partial<GithubReposCardConfig> = {}, hass: HomeAssistant = HASS): Promise<GithubReposCard> {
+async function card(config: Partial<GithubReposCardConfig> = {}, hass: HomeAssistant = HASS, layout?: string): Promise<GithubReposCard> {
     const element = document.createElement("github-repos-card");
     element.setConfig({ type: "custom:github-repos-card", ...config } as GithubReposCardConfig);
     element.hass = hass;
+    element.layout = layout;
     document.body.append(element);
     await element.updateComplete;
     return element;
@@ -117,12 +119,107 @@ describe("github-repos-card", () => {
         expect(opened).toBe("sensor.github_matti_mailbox_viimeisin_julkaisu");
     });
 
+    it.each([
+        ["auto", undefined, {}, ""],
+        ["fixed", undefined, { height_mode: "fixed" as const, height: 240, max_height: 300 }, "height: 240px"],
+        ["max", undefined, { max_height: 300 }, "max-height: 300px"],
+        ["grid rows", "grid", { height: 240, grid_options: { rows: 6 } }, "height: 100%"],
+    ])("sizes itself by %s", async (_name, layout, config, style) => {
+        const element = await card(config, HASS, layout);
+        expect(element.shadowRoot?.querySelector("ha-card")?.getAttribute("style") ?? "").toBe(style);
+    });
+
+    it.each([
+        ["the default config", {}, 2, "height: 77px"],
+        ["a title", { title: "Repos" }, 2, "height: 112px"],
+        [
+            "no numbers",
+            { show_issues: false, show_pull_requests: false, show_stars: false, show_forks: false, show_watchers: false },
+            1,
+            "height: 54px",
+        ],
+    ])("never gets lower than the title and one repo, with %s", async (_name, config, rows, style) => {
+        const element = await card({ ...config, height: 40 });
+        expect(element.getGridOptions().min_rows).toBe(rows);
+        expect(element.shadowRoot?.querySelector("ha-card")?.getAttribute("style")).toBe(style);
+    });
+
+    it("puts the title and the messages before the repos", async () => {
+        const element = await card({ title: "Repos", repos: ["matti/heating", "matti/nothing"], height: 300 });
+        const haCard = element.shadowRoot!.querySelector("ha-card")!;
+        expect([...haCard.children].map((child) => child.classList[0])).toEqual(["card-title", "message", "repos"]);
+        expect(haCard.querySelector(".repos > .repo")).not.toBeNull();
+    });
+
+    it.each([
+        ["held to a height", undefined, { height: 200 }, ["fade-bottom"]],
+        ["held up to a limit", undefined, { max_height: 200 }, ["fade-bottom"]],
+        ["held by rows in a sections view", "grid", { grid_options: { rows: 4 } }, ["fade-bottom"]],
+        [
+            "held to a height with automatic rows in a sections view",
+            "grid",
+            { height: 200, grid_options: { rows: "auto" as const } },
+            ["fade-bottom"],
+        ],
+        ["held by the older layout options' rows in a sections view", "grid", { layout_options: { grid_rows: 4 } }, ["fade-bottom"]],
+        ["never in auto", undefined, {}, []],
+        ["never in auto with automatic rows in a sections view", "grid", { grid_options: { rows: "auto" as const } }, []],
+        ["never by grid rows outside a sections view", undefined, { grid_options: { rows: 4 } }, []],
+    ])("fades the bottom edge of the list that runs past it when %s", async (_name, layout, config, expected) => {
+        const element = await card(config, HASS, layout);
+        const repos = element.shadowRoot!.querySelector<HTMLElement>(".repos")!;
+        Object.defineProperty(repos, "scrollHeight", { value: 600, configurable: true });
+        Object.defineProperty(repos, "clientHeight", { value: 200, configurable: true });
+        element.requestUpdate();
+        await element.updateComplete;
+        expect(["fade-top", "fade-bottom"].filter((name) => repos.classList.contains(name))).toEqual(expected);
+    });
+
+    it("lets go of the list's fade when the card goes from held to auto, and fades it again when held again", async () => {
+        const element = await card({ height: 200 });
+        const repos = element.shadowRoot!.querySelector<HTMLElement>(".repos")!;
+        Object.defineProperty(repos, "scrollHeight", { value: 600, configurable: true });
+        Object.defineProperty(repos, "clientHeight", { value: 200, configurable: true });
+        element.requestUpdate();
+        await element.updateComplete;
+        expect([...repos.classList].filter((name) => name.startsWith("fade"))).toEqual(["fades", "fade-bottom"]);
+        element.setConfig({ type: "custom:github-repos-card" });
+        await element.updateComplete;
+        expect([...repos.classList].filter((name) => name.startsWith("fade"))).toEqual([]);
+        element.setConfig({ type: "custom:github-repos-card", height: 200 });
+        await element.updateComplete;
+        expect([...repos.classList].filter((name) => name.startsWith("fade"))).toEqual(["fades", "fade-bottom"]);
+    });
+
+    it("draws a change of layout that comes in the same batch as an unrelated hass update", async () => {
+        const element = await card({ grid_options: { rows: 4 } });
+        expect(element.shadowRoot?.querySelector("ha-card")?.getAttribute("style") ?? "").toBe("");
+        element.layout = "grid";
+        element.hass = { ...HASS, states: { ...HASS.states } };
+        await element.updateComplete;
+        expect(element.shadowRoot?.querySelector("ha-card")?.getAttribute("style")).toBe("height: 100%");
+    });
+
     it("refuses lists that aren't lists of names", () => {
         const element = document.createElement("github-repos-card");
         expect(() =>
             element.setConfig({ type: "custom:github-repos-card", repos: "matti/heating" } as unknown as GithubReposCardConfig),
         ).toThrow();
         expect(() => element.setConfig({ type: "custom:github-repos-card", exclude: [1] } as unknown as GithubReposCardConfig)).toThrow();
+    });
+
+    it("refuses a height that isn't a positive number of pixels, and an unknown height mode, with an error about the height", () => {
+        const element = document.createElement("github-repos-card");
+        const config = (extra: Record<string, unknown>) => ({ type: "custom:github-repos-card", ...extra }) as never;
+        const error = translate(browserLanguage(), "common.invalid_height");
+        expect(error).toMatch(/^Invalid height\./);
+        for (const value of ["300px", 0, -10]) {
+            expect(() => element.setConfig(config({ max_height: value }))).toThrow(error);
+            expect(() => element.setConfig(config({ height: value }))).toThrow(error);
+        }
+        expect(() => element.setConfig(config({ height_mode: "tall" }))).toThrow(error);
+        // Left empty in YAML, each is unset.
+        expect(() => element.setConfig(config({ height_mode: null, height: null, max_height: null }))).not.toThrow();
     });
 
     it("redraws for a change in a GitHub sensor and ignores the rest of the house", async () => {
