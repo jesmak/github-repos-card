@@ -10,7 +10,9 @@
         "latest_release": "Viimeisin julkaisu",
         "unreleased": "Muutoksia tämän julkaisun jälkeen",
         "quiet_one": "{count} repo ilman tehtävää",
-        "quiet_other": "{count} repoa ilman tehtävää"
+        "quiet_other": "{count} repoa ilman tehtävää",
+        "owner_repos_one": "{count} repo",
+        "owner_repos_other": "{count} repoa"
     },
     "numbers": {
         "issues_count": "Avoimet seikat",

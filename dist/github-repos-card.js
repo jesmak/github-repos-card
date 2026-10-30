@@ -697,7 +697,9 @@ var en_default = {
     latest_release: "Latest release",
     unreleased: "Commits after this release",
     quiet_one: "{count} repo with nothing to do",
-    quiet_other: "{count} repos with nothing to do"
+    quiet_other: "{count} repos with nothing to do",
+    owner_repos_one: "{count} repo",
+    owner_repos_other: "{count} repos"
   },
   numbers: {
     issues_count: "Open issues",
@@ -760,7 +762,9 @@ var fi_default = {
     latest_release: "Viimeisin julkaisu",
     unreleased: "Muutoksia t\xE4m\xE4n julkaisun j\xE4lkeen",
     quiet_one: "{count} repo ilman teht\xE4v\xE4\xE4",
-    quiet_other: "{count} repoa ilman teht\xE4v\xE4\xE4"
+    quiet_other: "{count} repoa ilman teht\xE4v\xE4\xE4",
+    owner_repos_one: "{count} repo",
+    owner_repos_other: "{count} repoa"
   },
   numbers: {
     issues_count: "Avoimet seikat",
@@ -1349,7 +1353,12 @@ var GithubReposCard = class extends i4 {
       ({ owner, repos: own }) => b2`
                 <div class="owner">
                     <ha-icon icon="mdi:account-outline"></ha-icon><span class="owner-name">${owner}</span
-                    ><span class="count">${own.length}</span>
+                    ><span
+                        class="count"
+                        title=${this.text(own.length === 1 ? "common.owner_repos_one" : "common.owner_repos_other", { count: String(own.length) })}
+                        aria-label=${this.text(own.length === 1 ? "common.owner_repos_one" : "common.owner_repos_other", { count: String(own.length) })}
+                        >${own.length}</span
+                    >
                 </div>
                 ${own.map((repo) => this.repo(repo, columns))}
             `

@@ -270,7 +270,12 @@ export class GithubReposCard extends LitElement {
             ({ owner, repos: own }) => html`
                 <div class="owner">
                     <ha-icon icon="mdi:account-outline"></ha-icon><span class="owner-name">${owner}</span
-                    ><span class="count">${own.length}</span>
+                    ><span
+                        class="count"
+                        title=${this.text(own.length === 1 ? "common.owner_repos_one" : "common.owner_repos_other", { count: String(own.length) })}
+                        aria-label=${this.text(own.length === 1 ? "common.owner_repos_one" : "common.owner_repos_other", { count: String(own.length) })}
+                        >${own.length}</span
+                    >
                 </div>
                 ${own.map((repo) => this.repo(repo, columns))}
             `,

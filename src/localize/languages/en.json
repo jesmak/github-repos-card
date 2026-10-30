@@ -10,7 +10,9 @@
         "latest_release": "Latest release",
         "unreleased": "Commits after this release",
         "quiet_one": "{count} repo with nothing to do",
-        "quiet_other": "{count} repos with nothing to do"
+        "quiet_other": "{count} repos with nothing to do",
+        "owner_repos_one": "{count} repo",
+        "owner_repos_other": "{count} repos"
     },
     "numbers": {
         "issues_count": "Open issues",

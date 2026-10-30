@@ -76,6 +76,8 @@ describe("github-repos-card", () => {
         const mixed = await card({ repos: ["matti/heating", "example-org/aurora-card", "matti/mailbox"] });
         expect(owners(mixed)).toEqual(["example-org 1", "matti 2"]);
         expect(names(mixed)).toEqual(["aurora-card", "heating", "mailbox"]);
+        const counts = [...(mixed.shadowRoot?.querySelectorAll(".owner .count") ?? [])].map((count) => count.getAttribute("title"));
+        expect(counts).toEqual(["1 repo", "2 repoa"]);
         const mine = await card({ repos: ["matti/heating", "matti/mailbox"] });
         expect(owners(mine)).toEqual([]);
         expect(mine.shadowRoot?.querySelector(".full-name")?.getAttribute("title")).toBe("matti/heating");
