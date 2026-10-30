@@ -75,10 +75,21 @@ export function hasUnreleased(tag: HassEntity | undefined, commit: HassEntity | 
     return !!tagCommit && typeof head === "string" && tagCommit.toLowerCase() !== head.toLowerCase();
 }
 
+const compare = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base", numeric: true });
+
 /** Alphabetical by the repo's name, whatever its owner. */
 export function sortRepos(repos: Repo[]): Repo[] {
-    const compare = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base", numeric: true });
     return [...repos].sort((a, b) => compare(a.name, b.name) || compare(a.owner, b.owner));
+}
+
+/** The repos by their owner, the owners in alphabetical order and each one's repos in the order given. */
+export function byOwner(repos: Repo[]): { owner: string; repos: Repo[] }[] {
+    const groups = new Map<string, Repo[]>();
+    for (const repo of repos) {
+        const key = repo.owner.toLowerCase();
+        groups.set(key, [...(groups.get(key) ?? []), repo]);
+    }
+    return [...groups.values()].map((group) => ({ owner: group[0].owner, repos: group })).sort((a, b) => compare(a.owner, b.owner));
 }
 
 /**

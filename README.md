@@ -6,18 +6,18 @@ requests and unreleased commits at a glance.
 [![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases] [![HACS][hacs-shield]][hacs] [![License][license-shield]](LICENSE)
 
 <p>
-<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/folded-light.png#gh-light-mode-only" width="400" alt="Four repositories with something to do, two of them with commits after their latest release, and the four quiet ones folded into one line">
-<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/folded-dark.png#gh-dark-mode-only" width="400" alt="Four repositories with something to do, two of them with commits after their latest release, and the four quiet ones folded into one line">
-<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/all-light.png#gh-light-mode-only" width="400" alt="Eight repositories in alphabetical order, each with its version and its issues, pull requests, stars, forks and watchers in columns">
-<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/all-dark.png#gh-dark-mode-only" width="400" alt="Eight repositories in alphabetical order, each with its version and its issues, pull requests, stars, forks and watchers in columns">
+<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/folded-light.png#gh-light-mode-only" width="400" alt="Four repositories with something to do under their two owners' headers, two of them with commits after their latest release, and the four quiet ones folded into one line">
+<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/folded-dark.png#gh-dark-mode-only" width="400" alt="Four repositories with something to do under their two owners' headers, two of them with commits after their latest release, and the four quiet ones folded into one line">
+<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/all-light.png#gh-light-mode-only" width="400" alt="Eight repositories under two owners' headers, each on one line with its issues, pull requests, stars, forks and watchers in columns and its version at the right edge">
+<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/all-dark.png#gh-dark-mode-only" width="400" alt="Eight repositories under two owners' headers, each on one line with its issues, pull requests, stars, forks and watchers in columns and its version at the right edge">
 </p>
 
 ## What is it?
 
 A custom card for the repositories you follow with Home Assistant's own
-[GitHub integration](https://www.home-assistant.io/integrations/github/). Each repository is an entry of two lines.
-The first has its owner and name, with the latest release's version on the right. The second has its numbers, open
-issues and pull requests, stars, forks and watchers, in columns that line up down the list.
+[GitHub integration](https://www.home-assistant.io/integrations/github/). Each repository has its name, the latest
+release's version and its numbers, open issues and pull requests, stars, forks and watchers, in columns that line up
+down the list. Repositories of more than one owner come under a header for each owner.
 
 The version turns orange when the default branch has commits after the latest release, so you see at a glance which
 repositories have work waiting to be released. With folding on, the repositories that need something, an open issue,
@@ -74,8 +74,10 @@ Every option is in the card's visual editor.
 
 ## What it shows
 
-Repositories are in alphabetical order by name, whatever their owner. The owner is shown dimmed in front of every
-name, since the card can't know which repositories are yours.
+Repositories are in alphabetical order by name. When they have more than one owner, each owner has a header with the
+number of its repositories, the owners in alphabetical order and each one's repositories under it. The quiet ones
+folded away are grouped the same way inside the fold. When every repository has the same owner, the card shows no
+owner at all, and the full name is in the tooltip.
 
 The version is the latest release's tag. It turns orange when the default branch has commits after the newest tag.
 The GitHub integration gives the commit of the newest tag only, not of the latest release, so a repository that tags
@@ -97,20 +99,21 @@ downloads would need calls to GitHub of the card's own, so it shows neither.
 
 ## Sizes
 
-In a sections view the card takes a whole section by default and can be made as narrow as half of one. When a name
-doesn't fit, the owner is cut short first. The name itself wraps rather than being cut, as a name cut short could be
-another repository. The number columns are as wide as their widest number, so they line up whatever the numbers.
+In a sections view the card takes a whole section by default and can be made as narrow as half of one. A name that
+doesn't fit wraps rather than being cut, as a name cut short could be another repository. The number columns are as
+wide as their widest number, so they line up whatever the numbers.
 
-When the card is wide enough for every repository's name, version and numbers on one line, as a card two sections
-wide usually is, every repository takes one line. Otherwise every one takes two, so the lines are all of a height.
+When the card is wide enough for every repository's name, numbers and version on one line, every repository takes one
+line, with the version at the right edge of the card. Otherwise every one takes two, the name and the version on the
+first and the numbers on the second, so the lines are all of a height.
 
 The card's parts are sized to fill whole rows of a sections view. With a title, a repository on two lines takes a row
 and a card fills its rows exactly. On one line a repository takes half a row, as does each one when no numbers are
-shown. The row that folds the quiet repositories is as tall as a repository. With its rows left automatic the card
+shown. The row that folds the quiet repositories is as tall as a repository, and an owner's header takes half a row. With its rows left automatic the card
 always takes whole rows, so when its parts add up to half a row, that half stays empty at its bottom.
 
-<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-light.png#gh-light-mode-only" width="250" alt="Four repositories on a card half a section wide, the longest owner cut short and every number on one line">
-<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-dark.png#gh-dark-mode-only" width="250" alt="Four repositories on a card half a section wide, the longest owner cut short and every number on one line">
+<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-light.png#gh-light-mode-only" width="250" alt="Four repositories under two owners' headers on a card half a section wide, each with its version beside its name and its numbers on the line under them">
+<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-dark.png#gh-dark-mode-only" width="250" alt="Four repositories under two owners' headers on a card half a section wide, each with its version beside its name and its numbers on the line under them">
 
 ## Colours
 

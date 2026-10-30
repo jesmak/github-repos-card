@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatNumber, hasTodo, hasUnreleased, reposOf, selectRepos, shownNumbers } from "../src/repos";
+import { byOwner, formatNumber, hasTodo, hasUnreleased, reposOf, selectRepos, shownNumbers } from "../src/repos";
 import type { GithubReposCardConfig } from "../src/types";
 import { fakeHass } from "./fixture";
 
@@ -12,6 +12,16 @@ const HASS = fakeHass([
     { fullName: "matti/heating", numbers: { pulls_count: 1, forks_count: "unavailable" } },
     { fullName: "matti/aurora-card", release: "v0.3.1" },
 ]);
+
+describe("byOwner", () => {
+    it("groups the repos by their owner, whatever its case, the owners in alphabetical order", () => {
+        const groups = byOwner(reposOf(fakeHass([{ fullName: "matti/b" }, { fullName: "Zed/a" }, { fullName: "Matti/a" }])));
+        expect(groups.map(({ owner, repos }) => [owner, repos.map((repo) => repo.name)])).toEqual([
+            ["Matti", ["a", "b"]],
+            ["Zed", ["a"]],
+        ]);
+    });
+});
 
 describe("reposOf", () => {
     it("finds every repo by its device and keys, leaving out the user device", () => {

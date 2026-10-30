@@ -14,7 +14,7 @@ import { ScrollFade, fadeStyles } from "./fade";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows, heightCardSize, heightStyle, validHeight } from "./height";
 import { browserLanguage, translate } from "./localize/localize";
-import { formatNumber, githubSensors, hasTodo, reposOf, selectRepos, shownNumbers } from "./repos";
+import { byOwner, formatNumber, githubSensors, hasTodo, reposOf, selectRepos, shownNumbers } from "./repos";
 import type { GithubReposCardConfig, Repo } from "./types";
 
 console.info(
@@ -52,6 +52,8 @@ export class GithubReposCard extends LitElement {
     /** In a sections view with rows left automatic: the whole rows that hold the content, in pixels. */
     @state() private filled = 0;
     private slideTimer?: number;
+    /** Whether any shown repo has a version, so one without keeps the version's place on one line. */
+    private versions = false;
     /** Whether every repo fits on one line, which the card measures after each render and change in its width. */
     @state() private oneLine = false;
     private sensors: string[] = [];
@@ -103,10 +105,11 @@ export class GithubReposCard extends LitElement {
 
     // In pixels, the lowest a card held to a height gets: its padding and the title (56 px, or 24 without a title) and
     // one repo on its two lines (64 px), or on one when no numbers are shown (32), which every part's fixed height makes
-    // exact.
+    // exact. Repos listed from more than one owner come under their owner's header, another 32.
     private minimumHeight(): number {
         const repo = this.config && !shownNumbers(this.config).length ? 32 : 64;
-        return (this.config?.title ? 56 : 24) + repo;
+        const owners = new Set((this.config?.repos ?? []).map((name) => name.split("/")[0].trim().toLowerCase()));
+        return (this.config?.title ? 56 : 24) + repo + (owners.size > 1 ? 32 : 0);
     }
 
     public disconnectedCallback(): void {
@@ -181,15 +184,12 @@ export class GithubReposCard extends LitElement {
         const style = getComputedStyle(repos[0]);
         const room = card.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
         const fits = repos.every((repo) => {
-            const parts = [".owner", ".name", ".version"].map((part) => repo.querySelector<HTMLElement>(part));
-            const name = parts[1];
+            const [name, version] = [".name", ".version"].map((part) => repo.querySelector<HTMLElement>(part));
             // The name at its own width: on one line and uncapped by the room it has now.
             const wrap = name?.style.cssText ?? "";
             if (name) name.style.cssText = "white-space: nowrap; max-width: none";
-            // Fractional widths, as whole pixels rounded down would let a name a fraction too wide wrap. The owner may be cut
-            // short, so its own width is what it would need uncut.
-            const owner = parts[0] ? parts[0].scrollWidth + 1 : 0;
-            const text = owner + parts.slice(1).reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width : 0), 0);
+            // Fractional widths, as whole pixels rounded down would let a name a fraction too wide wrap.
+            const text = [name, version].reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width : 0), 0);
             if (name) name.style.cssText = wrap;
             // On one line the columns are only as wide as their numbers, so they are measured at that width.
             const row = repo.querySelector<HTMLElement>(".numbers");
@@ -241,8 +241,7 @@ export class GithubReposCard extends LitElement {
         const busy = config.fold_quiet ? shown.filter((repo) => hasTodo(repo, config)) : shown;
         const quiet = config.fold_quiet ? shown.filter((repo) => !hasTodo(repo, config)) : [];
         const columns = this.columns(shown);
-        // An owner the same on every line tells nothing, so it is left to the tooltip.
-        const owners = new Set(shown.map((repo) => repo.owner)).size > 1;
+        this.versions = shown.some((repo) => repo.version);
         return html`
             <ha-card
                 class="${this.oneLine ? "one-line" : ""} ${config.title ? "" : "untitled"} ${shownNumbers(config).length ? "" : "plain"} ${this.sliding ? "sliding" : ""}"
@@ -251,20 +250,39 @@ export class GithubReposCard extends LitElement {
                 ${config.title ? html`<h1 class="card-title">${config.title}</h1>` : nothing}
                 ${missing.map((name) => html`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
                 ${empty ? html`<div class="message">${this.text(empty)}</div>` : nothing}
-                <div class="repos">
-                    ${busy.map((repo) => this.repo(repo, columns, owners))} ${quiet.length ? this.fold(quiet.length) : nothing}
-                    ${quiet.length ? this.slide(quiet.map((repo) => this.repo(repo, columns, owners))) : nothing}
+                <div class="repos" style="--version-chars: ${Math.max(0, ...shown.map((repo) => repo.version?.length ?? 0))}">
+                    ${this.group(busy, shown, columns)} ${quiet.length ? this.fold(quiet.length) : nothing}
+                    ${quiet.length ? this.slide(this.group(quiet, shown, columns)) : nothing}
                 </div>
             </ha-card>
         `;
     }
 
-    /** One repo: its owner, when the card shows more than one, and name with the version on the right, and its numbers under them. */
-    private repo(repo: Repo, columns: Column[], owner: boolean): TemplateResult {
+    /**
+     * Repos under a header for each owner when the card shows more than one, and otherwise as they are: an owner the same
+     * on every line tells nothing, so it is left to the tooltip.
+     */
+    private group(repos: Repo[], shown: Repo[], columns: Column[]): TemplateResult[] {
+        if (new Set(shown.map((repo) => repo.owner.toLowerCase())).size < 2) {
+            return repos.map((repo) => this.repo(repo, columns));
+        }
+        return byOwner(repos).map(
+            ({ owner, repos: own }) => html`
+                <div class="owner">
+                    <ha-icon icon="mdi:account-outline"></ha-icon><span class="owner-name">${owner}</span
+                    ><span class="count">${own.length}</span>
+                </div>
+                ${own.map((repo) => this.repo(repo, columns))}
+            `,
+        );
+    }
+
+    /** One repo: its name with the version on the right, and its numbers under them. */
+    private repo(repo: Repo, columns: Column[]): TemplateResult {
         const body = html`
             <div class="top">
                 <span class="full-name" title=${repo.fullName}>
-                    ${owner ? html`<span class="owner">${repo.owner}/</span>` : nothing}<span class="name">${repo.name}</span>
+                    <span class="name">${repo.name}</span>
                 </span>
                 ${
                     repo.version
@@ -273,7 +291,9 @@ export class GithubReposCard extends LitElement {
                               title=${this.text(repo.unreleased ? "common.unreleased" : "common.latest_release")}
                               >${repo.version}</span
                           >`
-                        : nothing
+                        : this.versions
+                          ? html`<span class="version empty"></span>`
+                          : nothing
                 }
             </div>
             ${columns.length ? html`<div class="numbers">${columns.map((column) => this.number(repo, column))}</div>` : nothing}
@@ -444,7 +464,7 @@ export class GithubReposCard extends LitElement {
                     line-height: 20px;
                 }
 
-                /* The owner gives way first, cut short, and the name last, wrapping rather than cut: a name cut short is another repo. */
+                /* The name wraps rather than being cut: a name cut short is another repo. */
                 .full-name {
                     flex: 1;
                     min-width: 0;
@@ -452,26 +472,11 @@ export class GithubReposCard extends LitElement {
                     font-size: 14px;
                 }
 
-                .owner {
-                    flex: 0 1 auto;
-                    min-width: 1.2em;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    color: var(--secondary-text-color);
-                    opacity: 0.8;
-                }
-
-                /* The name never shrinks, so only the owner does, and it wraps only once the owner is down to its minimum. */
                 .name {
                     flex: none;
                     max-width: 100%;
                     font-weight: var(--ha-font-weight-medium, 500);
                     overflow-wrap: anywhere;
-                }
-
-                .owner + .name {
-                    max-width: calc(100% - 1.2em);
                 }
 
                 .version {
@@ -554,9 +559,28 @@ export class GithubReposCard extends LitElement {
                     padding-bottom: 0;
                 }
 
+                /* On one line the version goes to the card's right edge, after the numbers. */
                 .one-line .top {
+                    display: contents;
+                }
+
+                .one-line .full-name {
                     flex: 1 1 auto;
-                    min-width: 0;
+                }
+
+                /* Every version as wide as the widest, so the numbers before them line up down the list. */
+                .one-line .version {
+                    order: 1;
+                    width: max(44px, calc(var(--version-chars) * 1ch + 16px));
+                }
+
+                .version.empty {
+                    display: none;
+                }
+
+                .one-line .version.empty {
+                    display: block;
+                    visibility: hidden;
                 }
 
                 .one-line .numbers {
@@ -587,6 +611,46 @@ export class GithubReposCard extends LitElement {
 
                 .fold.open .chevron {
                     transform: rotate(180deg);
+                }
+
+                /* An owner's header, half a row in either layout, when the card shows more than one owner. */
+                .owner {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    min-height: 32px;
+                    padding: 0 16px;
+                    box-sizing: border-box;
+                    border-top: 1px solid var(--divider-color);
+                    background: color-mix(in srgb, var(--primary-text-color) 4%, transparent);
+                    color: var(--secondary-text-color);
+                    font-size: 13px;
+                    font-weight: var(--ha-font-weight-medium, 500);
+                    line-height: 20px;
+                }
+
+                .owner ha-icon {
+                    --mdc-icon-size: 16px;
+                    width: 16px;
+                    height: 16px;
+                    display: inline-flex;
+                    flex: none;
+                    opacity: 0.8;
+                }
+
+                .owner-name {
+                    min-width: 0;
+                    overflow-wrap: anywhere;
+                }
+
+                .owner .count {
+                    margin-left: auto;
+                    font-weight: var(--ha-font-weight-normal, 400);
+                    opacity: 0.75;
+                }
+
+                .owner + .repo {
+                    border-top-color: transparent;
                 }
 
                 .slide {
@@ -629,6 +693,7 @@ export class GithubReposCard extends LitElement {
 
                     .repo,
                     .fold,
+                    .owner,
                     .message {
                         padding-left: 12px;
                         padding-right: 12px;

@@ -886,9 +886,17 @@ function hasUnreleased(tag, commit) {
   const head = commit?.attributes.sha;
   return !!tagCommit && typeof head === "string" && tagCommit.toLowerCase() !== head.toLowerCase();
 }
+var compare = (a3, b3) => a3.localeCompare(b3, "en", { sensitivity: "base", numeric: true });
 function sortRepos(repos) {
-  const compare = (a3, b3) => a3.localeCompare(b3, "en", { sensitivity: "base", numeric: true });
   return [...repos].sort((a3, b3) => compare(a3.name, b3.name) || compare(a3.owner, b3.owner));
+}
+function byOwner(repos) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const repo of repos) {
+    const key = repo.owner.toLowerCase();
+    groups.set(key, [...groups.get(key) ?? [], repo]);
+  }
+  return [...groups.values()].map((group) => ({ owner: group[0].owner, repos: group })).sort((a3, b3) => compare(a3.owner, b3.owner));
 }
 function selectRepos(repos, config) {
   const key = (name) => name.trim().toLowerCase();
@@ -1149,6 +1157,8 @@ var GithubReposCard = class extends i4 {
     this.open = false;
     this.sliding = false;
     this.filled = 0;
+    /** Whether any shown repo has a version, so one without keeps the version's place on one line. */
+    this.versions = false;
     this.oneLine = false;
     this.sensors = [];
     this.resizes = typeof ResizeObserver === "undefined" ? void 0 : new ResizeObserver(() => this.measureSoon());
@@ -1196,10 +1206,11 @@ var GithubReposCard = class extends i4 {
   }
   // In pixels, the lowest a card held to a height gets: its padding and the title (56 px, or 24 without a title) and
   // one repo on its two lines (64 px), or on one when no numbers are shown (32), which every part's fixed height makes
-  // exact.
+  // exact. Repos listed from more than one owner come under their owner's header, another 32.
   minimumHeight() {
     const repo = this.config && !shownNumbers(this.config).length ? 32 : 64;
-    return (this.config?.title ? 56 : 24) + repo;
+    const owners = new Set((this.config?.repos ?? []).map((name) => name.split("/")[0].trim().toLowerCase()));
+    return (this.config?.title ? 56 : 24) + repo + (owners.size > 1 ? 32 : 0);
   }
   disconnectedCallback() {
     super.disconnectedCallback();
@@ -1263,12 +1274,10 @@ var GithubReposCard = class extends i4 {
     const style = getComputedStyle(repos[0]);
     const room = card.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
     const fits = repos.every((repo) => {
-      const parts = [".owner", ".name", ".version"].map((part) => repo.querySelector(part));
-      const name = parts[1];
+      const [name, version] = [".name", ".version"].map((part) => repo.querySelector(part));
       const wrap = name?.style.cssText ?? "";
       if (name) name.style.cssText = "white-space: nowrap; max-width: none";
-      const owner = parts[0] ? parts[0].scrollWidth + 1 : 0;
-      const text = owner + parts.slice(1).reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width : 0), 0);
+      const text = [name, version].reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width : 0), 0);
       if (name) name.style.cssText = wrap;
       const row = repo.querySelector(".numbers");
       const width = row?.style.getPropertyValue("--column-width") ?? "";
@@ -1312,7 +1321,7 @@ var GithubReposCard = class extends i4 {
     const busy = config.fold_quiet ? shown.filter((repo) => hasTodo(repo, config)) : shown;
     const quiet = config.fold_quiet ? shown.filter((repo) => !hasTodo(repo, config)) : [];
     const columns = this.columns(shown);
-    const owners = new Set(shown.map((repo) => repo.owner)).size > 1;
+    this.versions = shown.some((repo) => repo.version);
     return b2`
             <ha-card
                 class="${this.oneLine ? "one-line" : ""} ${config.title ? "" : "untitled"} ${shownNumbers(config).length ? "" : "plain"} ${this.sliding ? "sliding" : ""}"
@@ -1321,25 +1330,43 @@ var GithubReposCard = class extends i4 {
                 ${config.title ? b2`<h1 class="card-title">${config.title}</h1>` : A}
                 ${missing.map((name) => b2`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
                 ${empty ? b2`<div class="message">${this.text(empty)}</div>` : A}
-                <div class="repos">
-                    ${busy.map((repo) => this.repo(repo, columns, owners))} ${quiet.length ? this.fold(quiet.length) : A}
-                    ${quiet.length ? this.slide(quiet.map((repo) => this.repo(repo, columns, owners))) : A}
+                <div class="repos" style="--version-chars: ${Math.max(0, ...shown.map((repo) => repo.version?.length ?? 0))}">
+                    ${this.group(busy, shown, columns)} ${quiet.length ? this.fold(quiet.length) : A}
+                    ${quiet.length ? this.slide(this.group(quiet, shown, columns)) : A}
                 </div>
             </ha-card>
         `;
   }
-  /** One repo: its owner, when the card shows more than one, and name with the version on the right, and its numbers under them. */
-  repo(repo, columns, owner) {
+  /**
+   * Repos under a header for each owner when the card shows more than one, and otherwise as they are: an owner the same
+   * on every line tells nothing, so it is left to the tooltip.
+   */
+  group(repos, shown, columns) {
+    if (new Set(shown.map((repo) => repo.owner.toLowerCase())).size < 2) {
+      return repos.map((repo) => this.repo(repo, columns));
+    }
+    return byOwner(repos).map(
+      ({ owner, repos: own }) => b2`
+                <div class="owner">
+                    <ha-icon icon="mdi:account-outline"></ha-icon><span class="owner-name">${owner}</span
+                    ><span class="count">${own.length}</span>
+                </div>
+                ${own.map((repo) => this.repo(repo, columns))}
+            `
+    );
+  }
+  /** One repo: its name with the version on the right, and its numbers under them. */
+  repo(repo, columns) {
     const body = b2`
             <div class="top">
                 <span class="full-name" title=${repo.fullName}>
-                    ${owner ? b2`<span class="owner">${repo.owner}/</span>` : A}<span class="name">${repo.name}</span>
+                    <span class="name">${repo.name}</span>
                 </span>
                 ${repo.version ? b2`<span
                               class="version ${repo.unreleased ? "unreleased" : ""}"
                               title=${this.text(repo.unreleased ? "common.unreleased" : "common.latest_release")}
                               >${repo.version}</span
-                          >` : A}
+                          >` : this.versions ? b2`<span class="version empty"></span>` : A}
             </div>
             ${columns.length ? b2`<div class="numbers">${columns.map((column) => this.number(repo, column))}</div>` : A}
         `;
@@ -1486,7 +1513,7 @@ var GithubReposCard = class extends i4 {
                     line-height: 20px;
                 }
 
-                /* The owner gives way first, cut short, and the name last, wrapping rather than cut: a name cut short is another repo. */
+                /* The name wraps rather than being cut: a name cut short is another repo. */
                 .full-name {
                     flex: 1;
                     min-width: 0;
@@ -1494,26 +1521,11 @@ var GithubReposCard = class extends i4 {
                     font-size: 14px;
                 }
 
-                .owner {
-                    flex: 0 1 auto;
-                    min-width: 1.2em;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    color: var(--secondary-text-color);
-                    opacity: 0.8;
-                }
-
-                /* The name never shrinks, so only the owner does, and it wraps only once the owner is down to its minimum. */
                 .name {
                     flex: none;
                     max-width: 100%;
                     font-weight: var(--ha-font-weight-medium, 500);
                     overflow-wrap: anywhere;
-                }
-
-                .owner + .name {
-                    max-width: calc(100% - 1.2em);
                 }
 
                 .version {
@@ -1596,9 +1608,28 @@ var GithubReposCard = class extends i4 {
                     padding-bottom: 0;
                 }
 
+                /* On one line the version goes to the card's right edge, after the numbers. */
                 .one-line .top {
+                    display: contents;
+                }
+
+                .one-line .full-name {
                     flex: 1 1 auto;
-                    min-width: 0;
+                }
+
+                /* Every version as wide as the widest, so the numbers before them line up down the list. */
+                .one-line .version {
+                    order: 1;
+                    width: max(44px, calc(var(--version-chars) * 1ch + 16px));
+                }
+
+                .version.empty {
+                    display: none;
+                }
+
+                .one-line .version.empty {
+                    display: block;
+                    visibility: hidden;
                 }
 
                 .one-line .numbers {
@@ -1629,6 +1660,46 @@ var GithubReposCard = class extends i4 {
 
                 .fold.open .chevron {
                     transform: rotate(180deg);
+                }
+
+                /* An owner's header, half a row in either layout, when the card shows more than one owner. */
+                .owner {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    min-height: 32px;
+                    padding: 0 16px;
+                    box-sizing: border-box;
+                    border-top: 1px solid var(--divider-color);
+                    background: color-mix(in srgb, var(--primary-text-color) 4%, transparent);
+                    color: var(--secondary-text-color);
+                    font-size: 13px;
+                    font-weight: var(--ha-font-weight-medium, 500);
+                    line-height: 20px;
+                }
+
+                .owner ha-icon {
+                    --mdc-icon-size: 16px;
+                    width: 16px;
+                    height: 16px;
+                    display: inline-flex;
+                    flex: none;
+                    opacity: 0.8;
+                }
+
+                .owner-name {
+                    min-width: 0;
+                    overflow-wrap: anywhere;
+                }
+
+                .owner .count {
+                    margin-left: auto;
+                    font-weight: var(--ha-font-weight-normal, 400);
+                    opacity: 0.75;
+                }
+
+                .owner + .repo {
+                    border-top-color: transparent;
                 }
 
                 .slide {
@@ -1671,6 +1742,7 @@ var GithubReposCard = class extends i4 {
 
                     .repo,
                     .fold,
+                    .owner,
                     .message {
                         padding-left: 12px;
                         padding-right: 12px;

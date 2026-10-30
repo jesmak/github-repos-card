@@ -29,6 +29,12 @@ function names(element: GithubReposCard): string[] {
     return [...(element.shadowRoot?.querySelectorAll(".repo .name") ?? [])].map((name) => name.textContent ?? "");
 }
 
+function owners(element: GithubReposCard): string[] {
+    return [...(element.shadowRoot?.querySelectorAll(".owner") ?? [])].map(
+        (owner) => `${text(owner.querySelector(".owner-name"))} ${text(owner.querySelector(".count"))}`,
+    );
+}
+
 function text(element: Element | null | undefined): string {
     return (element?.textContent ?? "").replace(/\s+/g, " ").trim();
 }
@@ -48,7 +54,9 @@ describe("github-repos-card", () => {
 
     it("marks a version with commits after it, and shows none for a repo with no release", async () => {
         const element = await card();
-        const versions = [...(element.shadowRoot?.querySelectorAll(".version") ?? [])];
+        const versions = [...(element.shadowRoot?.querySelectorAll(".version:not(.empty)") ?? [])];
+        // The one without a release keeps an empty place, so the numbers line up when they are on one line.
+        expect(element.shadowRoot?.querySelectorAll(".version.empty").length).toBe(1);
         expect(versions.map((version) => text(version))).toEqual(["v2.0.0", "v0.3.1", "v1.0.0", "v1.2.0"]);
         expect(versions[0].classList.contains("unreleased")).toBe(true);
         expect(versions[1].classList.contains("unreleased")).toBe(false);
@@ -64,13 +72,20 @@ describe("github-repos-card", () => {
         expect(text(rows[4].children[2])).toBe("1,2 t.");
     });
 
-    it("shows the owners only when the repos have more than one", async () => {
-        const owners = (element: GithubReposCard) =>
-            [...(element.shadowRoot?.querySelectorAll(".owner") ?? [])].map((owner) => owner.textContent);
-        expect(owners(await card({ repos: ["example-org/aurora-card", "matti/heating"] }))).toEqual(["example-org/", "matti/"]);
+    it("puts the repos under their owners only when they have more than one", async () => {
+        const mixed = await card({ repos: ["matti/heating", "example-org/aurora-card", "matti/mailbox"] });
+        expect(owners(mixed)).toEqual(["example-org 1", "matti 2"]);
+        expect(names(mixed)).toEqual(["aurora-card", "heating", "mailbox"]);
         const mine = await card({ repos: ["matti/heating", "matti/mailbox"] });
         expect(owners(mine)).toEqual([]);
         expect(mine.shadowRoot?.querySelector(".full-name")?.getAttribute("title")).toBe("matti/heating");
+    });
+
+    it("groups the folded repos by their owners too", async () => {
+        const element = await card({ fold_quiet: true });
+        const slide = element.shadowRoot?.querySelector(".slide");
+        expect(owners(element)).toEqual(["example-org 1", "matti 2", "matti 2"]);
+        expect([...(slide?.querySelectorAll(".owner") ?? [])].map((owner) => text(owner.querySelector(".owner-name")))).toEqual(["matti"]);
     });
 
     it("colours issues and pull requests only when there are some", async () => {
@@ -152,6 +167,7 @@ describe("github-repos-card", () => {
             1,
             "height: 56px",
         ],
+        ["repos listed from two owners", { repos: ["matti/heating", "example-org/aurora-card"] }, 2, "height: 120px"],
     ])("never gets lower than the title and one repo, with %s", async (_name, config, rows, style) => {
         const element = await card({ ...config, height: 40 });
         expect(element.getGridOptions().min_rows).toBe(rows);
