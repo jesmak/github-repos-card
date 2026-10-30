@@ -183,11 +183,23 @@ export class GithubReposCard extends LitElement {
         const fits = repos.every((repo) => {
             const parts = [".owner", ".name", ".version"].map((part) => repo.querySelector<HTMLElement>(part));
             const name = parts[1];
-            const wrap = name?.style.whiteSpace ?? "";
-            if (name) name.style.whiteSpace = "nowrap";
-            const text = parts.reduce((sum, part) => sum + (part ? part.scrollWidth : 0), 0);
-            if (name) name.style.whiteSpace = wrap;
-            const numbers = [...repo.querySelectorAll<HTMLElement>(".number")].reduce((sum, number) => sum + number.offsetWidth + 4, 0);
+            // The name at its own width: on one line and uncapped by the room it has now.
+            const wrap = name?.style.cssText ?? "";
+            if (name) name.style.cssText = "white-space: nowrap; max-width: none";
+            // Fractional widths, as whole pixels rounded down would let a name a fraction too wide wrap. The owner may be cut
+            // short, so its own width is what it would need uncut.
+            const owner = parts[0] ? parts[0].scrollWidth + 1 : 0;
+            const text = owner + parts.slice(1).reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width : 0), 0);
+            if (name) name.style.cssText = wrap;
+            // On one line the columns are only as wide as their numbers, so they are measured at that width.
+            const row = repo.querySelector<HTMLElement>(".numbers");
+            const width = row?.style.getPropertyValue("--column-width") ?? "";
+            row?.style.setProperty("--column-width", "0px");
+            const numbers = [...repo.querySelectorAll<HTMLElement>(".number")].reduce(
+                (sum, number, i) => sum + number.getBoundingClientRect().width + (i ? 8 : 0),
+                0,
+            );
+            row?.style.setProperty("--column-width", width);
             // The gaps: the version's from the name, and the numbers' from the version.
             return text + numbers + 20 <= room;
         });
@@ -229,6 +241,8 @@ export class GithubReposCard extends LitElement {
         const busy = config.fold_quiet ? shown.filter((repo) => hasTodo(repo, config)) : shown;
         const quiet = config.fold_quiet ? shown.filter((repo) => !hasTodo(repo, config)) : [];
         const columns = this.columns(shown);
+        // An owner the same on every line tells nothing, so it is left to the tooltip.
+        const owners = new Set(shown.map((repo) => repo.owner)).size > 1;
         return html`
             <ha-card
                 class="${this.oneLine ? "one-line" : ""} ${config.title ? "" : "untitled"} ${shownNumbers(config).length ? "" : "plain"} ${this.sliding ? "sliding" : ""}"
@@ -238,19 +252,19 @@ export class GithubReposCard extends LitElement {
                 ${missing.map((name) => html`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
                 ${empty ? html`<div class="message">${this.text(empty)}</div>` : nothing}
                 <div class="repos">
-                    ${busy.map((repo) => this.repo(repo, columns))} ${quiet.length ? this.fold(quiet.length) : nothing}
-                    ${quiet.length ? this.slide(quiet.map((repo) => this.repo(repo, columns))) : nothing}
+                    ${busy.map((repo) => this.repo(repo, columns, owners))} ${quiet.length ? this.fold(quiet.length) : nothing}
+                    ${quiet.length ? this.slide(quiet.map((repo) => this.repo(repo, columns, owners))) : nothing}
                 </div>
             </ha-card>
         `;
     }
 
-    /** One repo: its owner and name with the version on the right, and its numbers under them. */
-    private repo(repo: Repo, columns: Column[]): TemplateResult {
+    /** One repo: its owner, when the card shows more than one, and name with the version on the right, and its numbers under them. */
+    private repo(repo: Repo, columns: Column[], owner: boolean): TemplateResult {
         const body = html`
             <div class="top">
                 <span class="full-name" title=${repo.fullName}>
-                    <span class="owner">${repo.owner}/</span><span class="name">${repo.name}</span>
+                    ${owner ? html`<span class="owner">${repo.owner}/</span>` : nothing}<span class="name">${repo.name}</span>
                 </span>
                 ${
                     repo.version
@@ -451,9 +465,13 @@ export class GithubReposCard extends LitElement {
                 /* The name never shrinks, so only the owner does, and it wraps only once the owner is down to its minimum. */
                 .name {
                     flex: none;
-                    max-width: calc(100% - 1.2em);
+                    max-width: 100%;
                     font-weight: var(--ha-font-weight-medium, 500);
                     overflow-wrap: anywhere;
+                }
+
+                .owner + .name {
+                    max-width: calc(100% - 1.2em);
                 }
 
                 .version {
@@ -542,8 +560,10 @@ export class GithubReposCard extends LitElement {
                 }
 
                 .one-line .numbers {
+                    --column-width: 0px;
                     flex: none;
                     flex-wrap: nowrap;
+                    gap: 8px;
                     margin-top: 0;
                 }
 

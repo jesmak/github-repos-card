@@ -1265,11 +1265,19 @@ var GithubReposCard = class extends i4 {
     const fits = repos.every((repo) => {
       const parts = [".owner", ".name", ".version"].map((part) => repo.querySelector(part));
       const name = parts[1];
-      const wrap = name?.style.whiteSpace ?? "";
-      if (name) name.style.whiteSpace = "nowrap";
-      const text = parts.reduce((sum, part) => sum + (part ? part.scrollWidth : 0), 0);
-      if (name) name.style.whiteSpace = wrap;
-      const numbers = [...repo.querySelectorAll(".number")].reduce((sum, number) => sum + number.offsetWidth + 4, 0);
+      const wrap = name?.style.cssText ?? "";
+      if (name) name.style.cssText = "white-space: nowrap; max-width: none";
+      const owner = parts[0] ? parts[0].scrollWidth + 1 : 0;
+      const text = owner + parts.slice(1).reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width : 0), 0);
+      if (name) name.style.cssText = wrap;
+      const row = repo.querySelector(".numbers");
+      const width = row?.style.getPropertyValue("--column-width") ?? "";
+      row?.style.setProperty("--column-width", "0px");
+      const numbers = [...repo.querySelectorAll(".number")].reduce(
+        (sum, number, i5) => sum + number.getBoundingClientRect().width + (i5 ? 8 : 0),
+        0
+      );
+      row?.style.setProperty("--column-width", width);
       return text + numbers + 20 <= room;
     });
     if (fits !== this.oneLine) {
@@ -1304,6 +1312,7 @@ var GithubReposCard = class extends i4 {
     const busy = config.fold_quiet ? shown.filter((repo) => hasTodo(repo, config)) : shown;
     const quiet = config.fold_quiet ? shown.filter((repo) => !hasTodo(repo, config)) : [];
     const columns = this.columns(shown);
+    const owners = new Set(shown.map((repo) => repo.owner)).size > 1;
     return b2`
             <ha-card
                 class="${this.oneLine ? "one-line" : ""} ${config.title ? "" : "untitled"} ${shownNumbers(config).length ? "" : "plain"} ${this.sliding ? "sliding" : ""}"
@@ -1313,18 +1322,18 @@ var GithubReposCard = class extends i4 {
                 ${missing.map((name) => b2`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
                 ${empty ? b2`<div class="message">${this.text(empty)}</div>` : A}
                 <div class="repos">
-                    ${busy.map((repo) => this.repo(repo, columns))} ${quiet.length ? this.fold(quiet.length) : A}
-                    ${quiet.length ? this.slide(quiet.map((repo) => this.repo(repo, columns))) : A}
+                    ${busy.map((repo) => this.repo(repo, columns, owners))} ${quiet.length ? this.fold(quiet.length) : A}
+                    ${quiet.length ? this.slide(quiet.map((repo) => this.repo(repo, columns, owners))) : A}
                 </div>
             </ha-card>
         `;
   }
-  /** One repo: its owner and name with the version on the right, and its numbers under them. */
-  repo(repo, columns) {
+  /** One repo: its owner, when the card shows more than one, and name with the version on the right, and its numbers under them. */
+  repo(repo, columns, owner) {
     const body = b2`
             <div class="top">
                 <span class="full-name" title=${repo.fullName}>
-                    <span class="owner">${repo.owner}/</span><span class="name">${repo.name}</span>
+                    ${owner ? b2`<span class="owner">${repo.owner}/</span>` : A}<span class="name">${repo.name}</span>
                 </span>
                 ${repo.version ? b2`<span
                               class="version ${repo.unreleased ? "unreleased" : ""}"
@@ -1498,9 +1507,13 @@ var GithubReposCard = class extends i4 {
                 /* The name never shrinks, so only the owner does, and it wraps only once the owner is down to its minimum. */
                 .name {
                     flex: none;
-                    max-width: calc(100% - 1.2em);
+                    max-width: 100%;
                     font-weight: var(--ha-font-weight-medium, 500);
                     overflow-wrap: anywhere;
+                }
+
+                .owner + .name {
+                    max-width: calc(100% - 1.2em);
                 }
 
                 .version {
@@ -1589,8 +1602,10 @@ var GithubReposCard = class extends i4 {
                 }
 
                 .one-line .numbers {
+                    --column-width: 0px;
                     flex: none;
                     flex-wrap: nowrap;
+                    gap: 8px;
                     margin-top: 0;
                 }
 

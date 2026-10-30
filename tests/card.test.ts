@@ -64,6 +64,15 @@ describe("github-repos-card", () => {
         expect(text(rows[4].children[2])).toBe("1,2 t.");
     });
 
+    it("shows the owners only when the repos have more than one", async () => {
+        const owners = (element: GithubReposCard) =>
+            [...(element.shadowRoot?.querySelectorAll(".owner") ?? [])].map((owner) => owner.textContent);
+        expect(owners(await card({ repos: ["example-org/aurora-card", "matti/heating"] }))).toEqual(["example-org/", "matti/"]);
+        const mine = await card({ repos: ["matti/heating", "matti/mailbox"] });
+        expect(owners(mine)).toEqual([]);
+        expect(mine.shadowRoot?.querySelector(".full-name")?.getAttribute("title")).toBe("matti/heating");
+    });
+
     it("colours issues and pull requests only when there are some", async () => {
         const element = await card({ repos: ["matti/sauna_sensor", "matti/heating"] });
         const [heating, sauna] = [...(element.shadowRoot?.querySelectorAll(".numbers") ?? [])];
