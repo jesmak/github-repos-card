@@ -47,8 +47,17 @@ export class GithubReposCard extends LitElement {
     @property({ attribute: false }) public layout?: string;
     @state() private config?: GithubReposCardConfig;
     @state() private open = false;
+    /** While the quiet repos slide open or shut, so the list shows no scrollbar halfway. */
+    @state() private sliding = false;
+    /** In a sections view with rows left automatic: the whole rows that hold the content, in pixels. */
+    @state() private filled = 0;
+    private slideTimer?: number;
+    /** Whether every repo fits on one line, which the card measures after each render and change in its width. */
+    @state() private oneLine = false;
     private sensors: string[] = [];
     private sensorsOf?: HomeAssistant["entities"];
+    private readonly resizes = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => this.measureSoon());
+    private frame?: number;
 
     constructor() {
         super();
@@ -92,12 +101,99 @@ export class GithubReposCard extends LitElement {
         return { columns: 12, min_columns: 6, rows: "auto", min_rows: gridMinRows(this.minimumHeight()) };
     }
 
-    // In pixels, the lowest a card held to a height gets: its padding, the title when it has one, and one repo with its
-    // line of numbers when any are shown, as measured on a full section's width.
+    // In pixels, the lowest a card held to a height gets: its padding and the title (56 px, or 24 without a title) and
+    // one repo on its two lines (64 px), or on one when no numbers are shown (32), which every part's fixed height makes
+    // exact.
     private minimumHeight(): number {
-        const title = this.config?.title ? 35 : 0;
-        const numbers = this.config && shownNumbers(this.config).length ? 23 : 0;
-        return 18 + title + 36 + numbers;
+        const repo = this.config && !shownNumbers(this.config).length ? 32 : 64;
+        return (this.config?.title ? 56 : 24) + repo;
+    }
+
+    public disconnectedCallback(): void {
+        super.disconnectedCallback();
+        this.resizes?.disconnect();
+        cancelAnimationFrame(this.frame ?? 0);
+        window.clearTimeout(this.slideTimer);
+        this.sliding = false;
+    }
+
+    protected updated(): void {
+        if (!this.isConnected) {
+            return;
+        }
+        const card = this.renderRoot.querySelector("ha-card");
+        if (card) {
+            this.resizes?.observe(card);
+        }
+        this.measureSoon();
+    }
+
+    private measureSoon(): void {
+        cancelAnimationFrame(this.frame ?? 0);
+        this.frame = requestAnimationFrame(() => {
+            this.measure();
+            this.fillRows();
+        });
+    }
+
+    /**
+     * In a sections view whose rows are left automatic, the card takes the whole rows its content needs (56 px each and
+     * the 8 px gaps between them), so the cards under it stay on the rows. Each part is a step of half a row, so this
+     * matters only when they add up to a half: a title and an odd number of repos on one line, no title, or a message.
+     */
+    private fillRows(): void {
+        const card = this.renderRoot.querySelector<HTMLElement>("ha-card");
+        const list = this.renderRoot.querySelector<HTMLElement>(".repos");
+        if (!card || !list || !card.clientWidth || this.layout !== "grid" || this.heightStyle()) {
+            if (this.filled) this.filled = 0;
+            return;
+        }
+        // Measured to the content's own end, as the list grows to whatever height the card is given, and to where the
+        // quiet repos' slide ends rather than where it is, so the card is on its rows the moment the slide begins.
+        const last = list.lastElementChild ?? list;
+        const style = getComputedStyle(card);
+        let content =
+            last.getBoundingClientRect()[last === list ? "top" : "bottom"] -
+            card.getBoundingClientRect().top +
+            (parseFloat(style.paddingBottom) || 0) +
+            (parseFloat(style.borderBottomWidth) || 0);
+        const slide = list.querySelector<HTMLElement>(".slide");
+        if (slide) {
+            content += (this.open ? (slide.firstElementChild?.scrollHeight ?? 0) : 0) - slide.getBoundingClientRect().height;
+        }
+        const filled = Math.ceil((Math.round(content) + 8) / 64) * 64 - 8;
+        if (filled !== this.filled) {
+            this.filled = filled;
+        }
+    }
+
+    /**
+     * Every repo on one line when every one of them fits, its full name at its own width, the version and the numbers
+     * beside it, and otherwise every repo on two, so the rows are all of a height. Measured at the parts' natural widths,
+     * which are the same in either layout, so the choice doesn't flip back and forth. A hidden card measures nothing.
+     */
+    private measure(): void {
+        const card = this.renderRoot.querySelector<HTMLElement>("ha-card");
+        const repos = [...this.renderRoot.querySelectorAll<HTMLElement>(".repo")];
+        if (!card || !card.clientWidth || !repos.length) {
+            return;
+        }
+        const style = getComputedStyle(repos[0]);
+        const room = card.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+        const fits = repos.every((repo) => {
+            const parts = [".owner", ".name", ".version"].map((part) => repo.querySelector<HTMLElement>(part));
+            const name = parts[1];
+            const wrap = name?.style.whiteSpace ?? "";
+            if (name) name.style.whiteSpace = "nowrap";
+            const text = parts.reduce((sum, part) => sum + (part ? part.scrollWidth : 0), 0);
+            if (name) name.style.whiteSpace = wrap;
+            const numbers = [...repo.querySelectorAll<HTMLElement>(".number")].reduce((sum, number) => sum + number.offsetWidth + 4, 0);
+            // The gaps: the version's from the name, and the numbers' from the version.
+            return text + numbers + 20 <= room;
+        });
+        if (fits !== this.oneLine) {
+            this.oneLine = fits;
+        }
     }
 
     private heightStyle(): string {
@@ -134,13 +230,16 @@ export class GithubReposCard extends LitElement {
         const quiet = config.fold_quiet ? shown.filter((repo) => !hasTodo(repo, config)) : [];
         const columns = this.columns(shown);
         return html`
-            <ha-card style=${this.heightStyle()}>
+            <ha-card
+                class="${this.oneLine ? "one-line" : ""} ${config.title ? "" : "untitled"} ${shownNumbers(config).length ? "" : "plain"} ${this.sliding ? "sliding" : ""}"
+                style=${this.heightStyle() || (this.filled ? `min-height: ${this.filled}px` : "")}
+            >
                 ${config.title ? html`<h1 class="card-title">${config.title}</h1>` : nothing}
                 ${missing.map((name) => html`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
                 ${empty ? html`<div class="message">${this.text(empty)}</div>` : nothing}
                 <div class="repos">
                     ${busy.map((repo) => this.repo(repo, columns))} ${quiet.length ? this.fold(quiet.length) : nothing}
-                    ${this.open ? quiet.map((repo) => this.repo(repo, columns)) : nothing}
+                    ${quiet.length ? this.slide(quiet.map((repo) => this.repo(repo, columns))) : nothing}
                 </div>
             </ha-card>
         `;
@@ -185,11 +284,33 @@ export class GithubReposCard extends LitElement {
     }
 
     private fold(count: number): TemplateResult {
-        return html`<button class="fold ${this.open ? "open" : ""}" aria-expanded=${this.open} @click=${() => (this.open = !this.open)}>
+        return html`<button class="fold ${this.open ? "open" : ""}" aria-expanded=${this.open} @click=${this.toggle}>
             <ha-icon icon="mdi:check"></ha-icon>
             <span>${this.text(count === 1 ? "common.quiet_one" : "common.quiet_other", { count: String(count) })}</span>
             <ha-icon class="chevron" icon="mdi:chevron-down"></ha-icon>
         </button>`;
+    }
+
+    private readonly toggle = (): void => {
+        this.open = !this.open;
+        this.sliding = true;
+        window.clearTimeout(this.slideTimer);
+        // The slide's end lifts it. Without a slide, as with reduced motion, there is no end to wait for.
+        this.slideTimer = window.setTimeout(() => (this.sliding = false), 1000);
+    };
+
+    private readonly slid = (event: TransitionEvent): void => {
+        if (event.propertyName === "grid-template-rows" && event.target === event.currentTarget) {
+            window.clearTimeout(this.slideTimer);
+            this.sliding = false;
+        }
+    };
+
+    /** The quiet repos, which slide open and shut. Shut, they stay in the page, so the change can be animated. */
+    private slide(content: TemplateResult[]): TemplateResult {
+        return html`<div class="slide ${this.open ? "open" : ""}" ?inert=${!this.open} @transitionend=${this.slid}>
+            <div class="slide-in">${content}</div>
+        </div>`;
     }
 
     /**
@@ -247,15 +368,25 @@ export class GithubReposCard extends LitElement {
                     scrollbar-width: thin;
                 }
 
+                /*
+                 * Every part is a step of 32 px, half a row of a sections view (56 px and an 8 px gap), so the card fills
+                 * whole rows: the padding and the title take 56 px (24 without a title), a repo on two lines and the fold
+                 * 64, and on one line 32.
+                 */
                 .card-title {
-                    margin: 0 16px 6px;
+                    margin: 0 16px 8px;
                     font-size: var(--ha-card-header-font-size, 24px);
                     font-weight: var(--ha-font-weight-normal, 400);
-                    line-height: 1.2;
+                    line-height: 28px;
+                }
+
+                ha-card.untitled {
+                    padding-top: 16px;
                 }
 
                 .message {
                     padding: 6px 16px;
+                    line-height: 20px;
                     color: var(--secondary-text-color);
                 }
 
@@ -264,7 +395,8 @@ export class GithubReposCard extends LitElement {
                     display: block;
                     box-sizing: border-box;
                     width: 100%;
-                    padding: 7px 16px 8px;
+                    min-height: 64px;
+                    padding: 10px 16px;
                     border: none;
                     border-top: 1px solid var(--divider-color);
                     background: none;
@@ -295,6 +427,7 @@ export class GithubReposCard extends LitElement {
                     display: flex;
                     align-items: center;
                     gap: 10px;
+                    line-height: 20px;
                 }
 
                 /* The owner gives way first, cut short, and the name last, wrapping rather than cut: a name cut short is another repo. */
@@ -331,6 +464,7 @@ export class GithubReposCard extends LitElement {
                     border-radius: 10px;
                     background: color-mix(in srgb, var(--primary-text-color) 10%, transparent);
                     font-size: 12px;
+                    line-height: 18px;
                     text-align: center;
                     white-space: nowrap;
                 }
@@ -346,6 +480,7 @@ export class GithubReposCard extends LitElement {
                     flex-wrap: wrap;
                     gap: 2px 4px;
                     margin-top: 3px;
+                    line-height: 20px;
                 }
 
                 /* As wide as the column's widest number and its icon need, never narrower than a column's minimum. */
@@ -384,9 +519,37 @@ export class GithubReposCard extends LitElement {
                     display: flex;
                     align-items: center;
                     gap: 8px;
-                    padding: 9px 16px;
+                    padding: 0 16px;
                     font-size: 13px;
                     color: var(--secondary-text-color);
+                }
+
+                /* Every repo on one line, the name, the version beside it and the numbers at the end, when all of them fit.
+                   With no numbers shown a repo is one line anyway, and so is the fold beside it. */
+                .one-line .repo,
+                .plain .repo {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    min-height: 32px;
+                    padding-top: 0;
+                    padding-bottom: 0;
+                }
+
+                .one-line .top {
+                    flex: 1 1 auto;
+                    min-width: 0;
+                }
+
+                .one-line .numbers {
+                    flex: none;
+                    flex-wrap: nowrap;
+                    margin-top: 0;
+                }
+
+                .one-line .fold,
+                .plain .fold {
+                    min-height: 32px;
                 }
 
                 .fold ha-icon {
@@ -399,11 +562,43 @@ export class GithubReposCard extends LitElement {
 
                 .fold .chevron {
                     margin-left: auto;
-                    transition: transform 0.2s;
+                    transition: transform var(--ha-animation-duration-normal, 250ms) ease;
                 }
 
                 .fold.open .chevron {
                     transform: rotate(180deg);
+                }
+
+                .slide {
+                    display: grid;
+                    grid-template-rows: 0fr;
+                    transition: grid-template-rows var(--ha-animation-duration-normal, 250ms) ease;
+                }
+
+                .slide.open {
+                    grid-template-rows: 1fr;
+                }
+
+                .slide-in {
+                    min-height: 0;
+                    overflow: hidden;
+                }
+
+                .sliding .repos {
+                    overflow-y: hidden;
+                }
+
+                /* The rows the card fills change along with the slide, not on ha-card's own timing. */
+                ha-card.sliding {
+                    transition: min-height var(--ha-animation-duration-normal, 250ms) ease;
+                }
+
+                @media (prefers-reduced-motion: reduce) {
+                    .slide,
+                    ha-card.sliding,
+                    .fold .chevron {
+                        transition: none;
+                    }
                 }
 
                 /* The card is the container, so the narrow layout styles what is inside it, never ha-card itself. */

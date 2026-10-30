@@ -74,12 +74,17 @@ describe("github-repos-card", () => {
 
     it("folds the repos with nothing to do into one line, which opens on a tap", async () => {
         const element = await card({ fold_quiet: true });
-        expect(names(element)).toEqual(["aurora-card", "heating", "sauna_sensor"]);
+        expect(names(element)).toEqual(["aurora-card", "heating", "sauna_sensor", "lake-level", "mailbox"]);
+        const slide = element.shadowRoot?.querySelector<HTMLElement>(".slide");
+        expect(slide?.inert).toBe(true);
+        expect(slide?.className).not.toContain("open");
         const fold = element.shadowRoot?.querySelector<HTMLButtonElement>(".fold");
         expect(text(fold)).toBe("2 repoa ilman tehtävää");
         fold?.click();
         await element.updateComplete;
-        expect(names(element)).toEqual(["aurora-card", "heating", "sauna_sensor", "lake-level", "mailbox"]);
+        expect(slide?.inert).toBe(false);
+        expect(slide?.className).toContain("open");
+        expect(fold?.getAttribute("aria-expanded")).toBe("true");
     });
 
     it("has no fold line when every repo has something to do", async () => {
@@ -130,13 +135,13 @@ describe("github-repos-card", () => {
     });
 
     it.each([
-        ["the default config", {}, 2, "height: 77px"],
-        ["a title", { title: "Repos" }, 2, "height: 112px"],
+        ["the default config", {}, 2, "height: 88px"],
+        ["a title", { title: "Repos" }, 2, "height: 120px"],
         [
             "no numbers",
             { show_issues: false, show_pull_requests: false, show_stars: false, show_forks: false, show_watchers: false },
             1,
-            "height: 54px",
+            "height: 56px",
         ],
     ])("never gets lower than the title and one repo, with %s", async (_name, config, rows, style) => {
         const element = await card({ ...config, height: 40 });

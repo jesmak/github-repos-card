@@ -101,6 +101,14 @@ In a sections view the card takes a whole section by default and can be made as 
 doesn't fit, the owner is cut short first. The name itself wraps rather than being cut, as a name cut short could be
 another repository. The number columns are as wide as their widest number, so they line up whatever the numbers.
 
+When the card is wide enough for every repository's name, version and numbers on one line, as a card two sections
+wide usually is, every repository takes one line. Otherwise every one takes two, so the lines are all of a height.
+
+The card's parts are sized to fill whole rows of a sections view. With a title, a repository on two lines takes a row
+and a card fills its rows exactly. On one line a repository takes half a row, as does each one when no numbers are
+shown. The row that folds the quiet repositories is as tall as a repository. With its rows left automatic the card
+always takes whole rows, so when its parts add up to half a row, that half stays empty at its bottom.
+
 <img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-light.png#gh-light-mode-only" width="250" alt="Four repositories on a card half a section wide, the longest owner cut short and every number on one line">
 <img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-dark.png#gh-dark-mode-only" width="250" alt="Four repositories on a card half a section wide, the longest owner cut short and every number on one line">
 
