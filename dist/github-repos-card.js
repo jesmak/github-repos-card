@@ -1235,6 +1235,13 @@ var GithubReposCard = class extends i4 {
     const columns = config?.grid_options ? config.grid_options.columns : typeof config?.layout_options?.grid_columns === "number" ? config.layout_options.grid_columns * 3 : void 0;
     return typeof columns === "number" ? columns : 12;
   }
+  /** Back on the page, such as from another view, the card is followed and measured again without waiting for its data. */
+  connectedCallback() {
+    super.connectedCallback();
+    if (this.hasUpdated) {
+      this.requestUpdate();
+    }
+  }
   disconnectedCallback() {
     super.disconnectedCallback();
     this.resizes?.disconnect();
@@ -1353,11 +1360,15 @@ var GithubReposCard = class extends i4 {
     const columns = this.columns(shown);
     this.versions = shown.some((repo) => repo.version);
     const held = this.heightStyle();
+    const classes = [
+      this.oneLine && "one-line",
+      !config.title && "untitled",
+      !shownNumbers(config).length && "plain",
+      this.sliding && "sliding",
+      held && "held"
+    ];
     return b2`
-            <ha-card
-                class="${this.oneLine ? "one-line" : ""} ${config.title ? "" : "untitled"} ${shownNumbers(config).length ? "" : "plain"} ${this.sliding ? "sliding" : ""} ${held ? "held" : ""}"
-                style=${held || (this.filled ? `min-height: ${this.filled}px` : "")}
-            >
+            <ha-card class="${classes.filter(Boolean).join(" ")}" style=${held || (this.filled ? `min-height: ${this.filled}px` : "")}>
                 ${config.title ? b2`<h1 class="card-title">${config.title}</h1>` : A}
                 ${missing.map((name) => b2`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
                 ${empty ? b2`<div class="message">${this.text(empty)}</div>` : A}
@@ -1376,20 +1387,18 @@ var GithubReposCard = class extends i4 {
     if (new Set(shown.map((repo) => repo.owner.toLowerCase())).size < 2) {
       return repos.map((repo) => this.repo(repo, columns));
     }
-    return byOwner(repos).map(
-      ({ owner, repos: own }) => b2`
+    return byOwner(repos).map(({ owner, repos: own }) => {
+      const count = this.text(own.length === 1 ? "common.owner_repos_one" : "common.owner_repos_other", {
+        count: String(own.length)
+      });
+      return b2`
                 <div class="owner">
                     <ha-icon icon="mdi:account-outline"></ha-icon><span class="owner-name">${owner}</span
-                    ><span
-                        class="count"
-                        title=${this.text(own.length === 1 ? "common.owner_repos_one" : "common.owner_repos_other", { count: String(own.length) })}
-                        aria-label=${this.text(own.length === 1 ? "common.owner_repos_one" : "common.owner_repos_other", { count: String(own.length) })}
-                        >${own.length}</span
-                    >
+                    ><span class="count" title=${count} aria-label=${count}>${own.length}</span>
                 </div>
                 ${own.map((repo) => this.repo(repo, columns))}
-            `
-    );
+            `;
+    });
   }
   /** One repo: its name with the version on the right, and its numbers under them. */
   repo(repo, columns) {

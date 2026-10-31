@@ -286,6 +286,56 @@ describe("github-repos-card", () => {
         }
     });
 
+    // A card without a title or numbers says so in its classes, which its padding and rows are styled by.
+    it.each<[string, Record<string, unknown>, string[]]>([
+        ["a title and numbers", { ...oneOwner, title: "Repos" }, []],
+        ["no title", oneOwner, ["untitled"]],
+        ["a title and no numbers", { ...oneOwner, ...plain, title: "Repos" }, ["plain"]],
+        ["neither a title nor numbers", { ...oneOwner, ...plain }, ["untitled", "plain"]],
+    ])("marks a card with %s", async (_name, config, expected) => {
+        const element = await card(config);
+        const classes = element.shadowRoot?.querySelector("ha-card")?.classList;
+        expect(["untitled", "plain"].filter((name) => classes?.contains(name))).toEqual(expected);
+    });
+
+    it("is measured again when it comes back to the page, such as from another view", async () => {
+        const watched = new Set<Element>();
+        let measured = 0;
+        vi.stubGlobal(
+            "ResizeObserver",
+            class {
+                observe(target: Element) {
+                    watched.add(target);
+                }
+                unobserve(target: Element) {
+                    watched.delete(target);
+                }
+                disconnect() {
+                    watched.clear();
+                }
+            },
+        );
+        vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+            measured++;
+            callback(0);
+            return measured;
+        });
+        vi.stubGlobal("cancelAnimationFrame", () => undefined);
+        try {
+            const element = await card({ ...oneOwner }, HASS, "grid");
+            expect(watched.has(element.shadowRoot!.querySelector("ha-card")!)).toBe(true);
+            element.remove();
+            expect(watched.size).toBe(0);
+            const before = measured;
+            document.body.append(element);
+            await element.updateComplete;
+            expect(watched.has(element.shadowRoot!.querySelector("ha-card")!)).toBe(true);
+            expect(measured).toBeGreaterThan(before);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
     // Held, the title keeps to one line, so the card's minimum holds at any width. Otherwise it wraps.
     it.each<[string, Record<string, unknown>, string | undefined, boolean]>([
         ["held to a height", { title: "Repos", height: 300 }, undefined, true],
