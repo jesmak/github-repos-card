@@ -160,20 +160,142 @@ describe("github-repos-card", () => {
         expect(element.shadowRoot?.querySelector("ha-card")?.getAttribute("style") ?? "").toBe(style);
     });
 
-    it.each([
-        ["the default config", {}, 2, "height: 88px"],
-        ["a title", { title: "Repos" }, 2, "height: 120px"],
+    // The padding and the title on one line (56 px, or 24 without a title) and one repo: its padding and two lines of
+    // numbers with its name (65 px and 20 a line), or with no numbers its name alone, within a row of 32 px. The name
+    // counts as one line on a whole section's width and as two on 9 to 11 columns, the narrowest the card goes. With repos
+    // from two owners, or every followed repo, the repo comes under its owner's header (32 px) and keeps its border (1).
+    const plain = { show_issues: false, show_pull_requests: false, show_stars: false, show_forks: false, show_watchers: false };
+    const oneOwner = { repos: ["matti/heating", "matti/mailbox"] };
+    const twoOwners = { repos: ["matti/heating", "example-org/aurora-card"] };
+    it.each<[string, Record<string, unknown>, number, number]>([
+        ["one owner's repos", oneOwner, 109, 2],
+        ["one owner's repos and a title", { ...oneOwner, title: "Repos" }, 141, 3],
+        ["one owner's repos and a title on 12 columns", { ...oneOwner, title: "Repos", grid_options: { columns: 12 } }, 141, 3],
+        ["one owner's repos and a title on a whole section", { ...oneOwner, title: "Repos", grid_options: { columns: "full" } }, 141, 3],
+        ["one owner's repos and a title on 11 columns", { ...oneOwner, title: "Repos", grid_options: { columns: 11 } }, 161, 3],
+        ["one owner's repos and a title on 9 columns", { ...oneOwner, title: "Repos", grid_options: { columns: 9 } }, 161, 3],
         [
-            "no numbers",
-            { show_issues: false, show_pull_requests: false, show_stars: false, show_forks: false, show_watchers: false },
-            1,
-            "height: 56px",
+            "one owner's repos and a title on 6 columns, which a sections view widens to 9",
+            { ...oneOwner, title: "Repos", grid_options: { columns: 6 } },
+            161,
+            3,
         ],
-        ["repos listed from two owners", { repos: ["matti/heating", "example-org/aurora-card"] }, 2, "height: 120px"],
-    ])("never gets lower than the title and one repo, with %s", async (_name, config, rows, style) => {
+        [
+            "one owner's repos and a title on the older layout options' 4 columns",
+            { ...oneOwner, title: "Repos", layout_options: { grid_columns: 4 } },
+            141,
+            3,
+        ],
+        [
+            "one owner's repos and a title on the older layout options' 3 columns",
+            { ...oneOwner, title: "Repos", layout_options: { grid_columns: 3 } },
+            161,
+            3,
+        ],
+        ["one owner's repos on 9 columns", { ...oneOwner, grid_options: { columns: 9 } }, 129, 3],
+        ["one owner's repos and no numbers", { ...oneOwner, ...plain }, 56, 1],
+        ["one owner's repos, no numbers and a title", { ...oneOwner, ...plain, title: "Repos" }, 88, 2],
+        [
+            "one owner's repos, no numbers and a title on 9 columns",
+            { ...oneOwner, ...plain, title: "Repos", grid_options: { columns: 9 } },
+            96,
+            2,
+        ],
+        ["two owners' repos", twoOwners, 142, 3],
+        ["two owners' repos and a title", { ...twoOwners, title: "Repos" }, 174, 3],
+        ["two owners' repos and a title on 9 columns", { ...twoOwners, title: "Repos", grid_options: { columns: 9 } }, 194, 4],
+        ["two owners' repos, no numbers and a title", { ...twoOwners, ...plain, title: "Repos" }, 120, 2],
+        [
+            "two owners' repos, no numbers and a title on 9 columns",
+            { ...twoOwners, ...plain, title: "Repos", grid_options: { columns: 9 } },
+            129,
+            3,
+        ],
+        ["every followed repo", {}, 142, 3],
+        ["every followed repo and a title", { title: "Repos" }, 174, 3],
+        ["every followed repo and a title on 9 columns", { title: "Repos", grid_options: { columns: 9 } }, 194, 4],
+        ["every followed repo and no numbers", plain, 88, 2],
+    ])("never gets lower than the title and one repo, with %s", async (_name, config, height, rows) => {
         const element = await card({ ...config, height: 40 });
         expect(element.getGridOptions().min_rows).toBe(rows);
-        expect(element.shadowRoot?.querySelector("ha-card")?.getAttribute("style")).toBe(style);
+        expect(element.getGridOptions().min_columns).toBe(9);
+        expect(element.shadowRoot?.querySelector("ha-card")?.getAttribute("style")).toBe(`height: ${height}px`);
+    });
+
+    // A card inside another card has no columns in its config, so only the width it is measured to have tells how
+    // little room its names get. Narrower than a whole section's least (286 px inside the border), the name counts as two
+    // lines, and the width only ever raises what the columns give.
+    const measuredAt = (element: GithubReposCard, width: number): void => {
+        const haCard = element.shadowRoot!.querySelector<HTMLElement>("ha-card")!;
+        Object.defineProperty(haCard, "clientWidth", { value: width, configurable: true });
+    };
+    const styleOf = (element: GithubReposCard) => element.shadowRoot?.querySelector("ha-card")?.getAttribute("style");
+    const narrowCases: Array<[string, Record<string, unknown>, string | undefined, number, string, number]> = [
+        ["measured narrower than a whole section", {}, undefined, 236, "height: 161px", 3],
+        ["measured at a whole section's least", {}, undefined, 286, "height: 141px", 3],
+        ["measured just under it", {}, undefined, 285, "height: 161px", 3],
+        ["measured while hidden, never measured before", {}, undefined, 0, "height: 141px", 3],
+        ["on 9 columns, measured wide", { grid_options: { columns: 9 } }, undefined, 450, "height: 161px", 3],
+        ["measured narrow with no numbers", plain, undefined, 236, "height: 96px", 2],
+        ["measured narrow with no title", { title: undefined }, undefined, 236, "height: 129px", 3],
+        ["measured narrow with every repo excluded", { exclude: oneOwner.repos }, undefined, 236, "height: 161px", 3],
+        ["measured narrow with an empty list, which is every followed repo", { repos: [] }, undefined, 236, "height: 194px", 4],
+        ["measured narrow with no list", { repos: undefined }, undefined, 236, "height: 194px", 4],
+        ["measured narrow with two owners' repos", twoOwners, undefined, 236, "height: 194px", 4],
+        ["up to a limit, measured narrow", { height: undefined, max_height: 40 }, undefined, 236, "max-height: 161px", 3],
+        ["by rows in a sections view, measured narrow", { height: undefined, grid_options: { rows: 2 } }, "grid", 236, "height: 100%", 3],
+    ];
+    it.each(narrowCases)("is held no lower than its measured width needs, %s", async (_name, config, layout, width, style, rows) => {
+        const element = await card({ ...oneOwner, title: "Repos", height: 40, ...config }, HASS, layout);
+        measuredAt(element, width);
+        element["measure"]();
+        await element.updateComplete;
+        expect(styleOf(element)).toBe(style);
+        expect(element.getGridOptions().min_rows).toBe(rows);
+    });
+
+    it("lowers its minimum again when it widens, and keeps it while hidden", async () => {
+        const element = await card({ ...oneOwner, title: "Repos", height: 40 });
+        const heights = [];
+        for (const width of [236, 400, 236, 0]) {
+            measuredAt(element, width);
+            element["measure"]();
+            await element.updateComplete;
+            heights.push(styleOf(element));
+        }
+        expect(heights).toEqual(["height: 161px", "height: 141px", "height: 161px", "height: 161px"]);
+    });
+
+    it("measures its width in the frame after an update", async () => {
+        const frames: FrameRequestCallback[] = [];
+        vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
+        vi.stubGlobal("cancelAnimationFrame", () => undefined);
+        try {
+            const element = await card({ ...oneOwner, title: "Repos", height: 40 });
+            measuredAt(element, 236);
+            element.requestUpdate();
+            await element.updateComplete;
+            expect(styleOf(element)).toBe("height: 141px");
+            while (frames.length) {
+                frames.splice(0).forEach((frame) => frame(0));
+                await element.updateComplete;
+            }
+            expect(styleOf(element)).toBe("height: 161px");
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    // Held, the title keeps to one line, so the card's minimum holds at any width. Otherwise it wraps.
+    it.each<[string, Record<string, unknown>, string | undefined, boolean]>([
+        ["held to a height", { title: "Repos", height: 300 }, undefined, true],
+        ["held up to a limit", { title: "Repos", max_height: 300 }, undefined, true],
+        ["held by rows in a sections view", { title: "Repos", grid_options: { rows: 4 } }, "grid", true],
+        ["by its content", { title: "Repos" }, undefined, false],
+        ["by its content on automatic rows", { title: "Repos", grid_options: { rows: "auto" } }, "grid", false],
+    ])("is marked held %s", async (_name, config, layout, held) => {
+        const element = await card(config, HASS, layout);
+        expect(element.shadowRoot?.querySelector("ha-card")?.classList.contains("held")).toBe(held);
     });
 
     it("puts the title and the messages before the repos", async () => {

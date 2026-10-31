@@ -99,9 +99,14 @@ downloads would need calls to GitHub of the card's own, so it shows neither.
 
 ## Sizes
 
-In a sections view the card takes a whole section by default and can be made as narrow as half of one. A name that
-doesn't fit wraps rather than being cut, as a name cut short could be another repository. The number columns are as
-wide as their widest number, so they line up whatever the numbers.
+In a sections view the card takes a whole section by default and can be made as narrow as three quarters of one. A
+name that doesn't fit wraps rather than being cut, as a name cut short could be another repository. The number columns
+are as wide as their widest number, so they line up whatever the numbers.
+
+Held to a height, the card keeps its title to one line, cut short with an ellipsis when it is longer. The least it gets
+counts a repository's name on one line on a whole section and on two when narrower, and its numbers on two lines. A
+longer name, numbers in the thousands on a narrow card or a long owner's name scroll the rest of the first repository
+with the list.
 
 When the card is wide enough for every repository's name, numbers and version on one line, every repository takes one
 line, with the version at the right edge of the card. Otherwise every one takes two, the name and the version on the
@@ -112,8 +117,8 @@ and a card fills its rows exactly. On one line a repository takes half a row, as
 shown. The row that folds the quiet repositories is as tall as a repository, and an owner's header takes half a row. With its rows left automatic the card
 always takes whole rows, so when its parts add up to half a row, that half stays empty at its bottom.
 
-<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-light.png#gh-light-mode-only" width="250" alt="Four repositories under two owners' headers on a card half a section wide, each with its version beside its name and its numbers on the line under them">
-<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-dark.png#gh-dark-mode-only" width="250" alt="Four repositories under two owners' headers on a card half a section wide, each with its version beside its name and its numbers on the line under them">
+<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-light.png#gh-light-mode-only" width="250" alt="Four repositories under two owners' headers on a narrow card, each with its version beside its name and its numbers on the line under them">
+<img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-dark.png#gh-dark-mode-only" width="250" alt="Four repositories under two owners' headers on a narrow card, each with its version beside its name and its numbers on the line under them">
 
 ## Colours
 

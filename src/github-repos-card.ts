@@ -31,6 +31,11 @@ interface CardRegistration {
     preview?: boolean;
 }
 
+/** The fewest columns of a sections view the card takes. */
+const MIN_COLUMNS = 9;
+/** The least room inside its border a card on a whole section gets: a phone's section with a background of its own. */
+const WHOLE_SECTION_PX = 286;
+
 const registry = window as unknown as { customCards?: CardRegistration[] };
 registry.customCards = registry.customCards ?? [];
 registry.customCards.push({
@@ -56,6 +61,8 @@ export class GithubReposCard extends LitElement {
     private versions = false;
     /** Whether every repo fits on one line, which the card measures after each render and change in its width. */
     @state() private oneLine = false;
+    /** Narrower than a whole section gets, as measured, which a card inside another card can be whatever its columns. */
+    @state() private narrow = false;
     private sensors: string[] = [];
     private sensorsOf?: HomeAssistant["entities"];
     private readonly resizes = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => this.measureSoon());
@@ -98,18 +105,40 @@ export class GithubReposCard extends LitElement {
         );
     }
 
-    /** In a sections view the card takes a whole section by default and is never narrower than half of one. */
+    /** In a sections view the card takes a whole section by default and is never narrower than three quarters of one. */
     public getGridOptions(): Record<string, unknown> {
-        return { columns: 12, min_columns: 6, rows: "auto", min_rows: gridMinRows(this.minimumHeight()) };
+        return { columns: 12, min_columns: MIN_COLUMNS, rows: "auto", min_rows: gridMinRows(this.minimumHeight()) };
     }
 
-    // In pixels, the lowest a card held to a height gets: its padding and the title (56 px, or 24 without a title) and
-    // one repo on its two lines (64 px), or on one when no numbers are shown (32), which every part's fixed height makes
-    // exact. Repos listed from more than one owner come under their owner's header, another 32.
+    /**
+     * In pixels, the lowest a card held to a height gets: its padding and the title, which a held card keeps to one line
+     * (56 px, or 24 without a title), and one repo. A repo is its padding and two lines of numbers with its name (65 px
+     * and 20 a line), or with no numbers its name alone, within a row of 32 px. The name counts as one line on a whole
+     * section's width and as two on fewer columns or when measured narrower. With repos from more than one owner, or
+     * every followed repo, which may be, the first repo comes under its owner's header (32 px) and keeps its top border.
+     * A longer name, numbers in the thousands on a narrow card or an owner's name too long for its header scroll the rest
+     * of the first repo with the list.
+     */
     private minimumHeight(): number {
-        const repo = this.config && !shownNumbers(this.config).length ? 32 : 64;
-        const owners = new Set((this.config?.repos ?? []).map((name) => name.split("/")[0].trim().toLowerCase()));
-        return (this.config?.title ? 56 : 24) + repo + (owners.size > 1 ? 32 : 0);
+        const nameLines = this.gridColumns() >= 12 && !this.narrow ? 1 : 2;
+        const listed = this.config?.repos ?? [];
+        const owners = new Set(listed.map((name) => name.split("/")[0].trim().toLowerCase()));
+        const header = !listed.length || owners.size > 1 ? 32 : 0;
+        const border = header ? 1 : 0;
+        const repo =
+            this.config && !shownNumbers(this.config).length ? Math.max(32, 20 * nameLines + border) : 65 + 20 * nameLines + border;
+        return (this.config?.title ? 56 : 24) + header + repo;
+    }
+
+    /** The columns set in the layout tab, in either form Home Assistant has saved them, or a whole section. */
+    private gridColumns(): number {
+        const config = this.config as { grid_options?: { columns?: unknown }; layout_options?: { grid_columns?: unknown } } | undefined;
+        const columns = config?.grid_options
+            ? config.grid_options.columns
+            : typeof config?.layout_options?.grid_columns === "number"
+              ? config.layout_options.grid_columns * 3
+              : undefined;
+        return typeof columns === "number" ? columns : 12;
     }
 
     public disconnectedCallback(): void {
@@ -178,7 +207,14 @@ export class GithubReposCard extends LitElement {
     private measure(): void {
         const card = this.renderRoot.querySelector<HTMLElement>("ha-card");
         const repos = [...this.renderRoot.querySelectorAll<HTMLElement>(".repo")];
-        if (!card || !card.clientWidth || !repos.length) {
+        if (!card || !card.clientWidth) {
+            return;
+        }
+        const narrow = card.clientWidth < WHOLE_SECTION_PX;
+        if (narrow !== this.narrow) {
+            this.narrow = narrow;
+        }
+        if (!repos.length) {
             return;
         }
         const style = getComputedStyle(repos[0]);
@@ -242,10 +278,11 @@ export class GithubReposCard extends LitElement {
         const quiet = config.fold_quiet ? shown.filter((repo) => !hasTodo(repo, config)) : [];
         const columns = this.columns(shown);
         this.versions = shown.some((repo) => repo.version);
+        const held = this.heightStyle();
         return html`
             <ha-card
-                class="${this.oneLine ? "one-line" : ""} ${config.title ? "" : "untitled"} ${shownNumbers(config).length ? "" : "plain"} ${this.sliding ? "sliding" : ""}"
-                style=${this.heightStyle() || (this.filled ? `min-height: ${this.filled}px` : "")}
+                class="${this.oneLine ? "one-line" : ""} ${config.title ? "" : "untitled"} ${shownNumbers(config).length ? "" : "plain"} ${this.sliding ? "sliding" : ""} ${held ? "held" : ""}"
+                style=${held || (this.filled ? `min-height: ${this.filled}px` : "")}
             >
                 ${config.title ? html`<h1 class="card-title">${config.title}</h1>` : nothing}
                 ${missing.map((name) => html`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
@@ -417,6 +454,13 @@ export class GithubReposCard extends LitElement {
                     font-size: var(--ha-card-header-font-size, 24px);
                     font-weight: var(--ha-font-weight-normal, 400);
                     line-height: 28px;
+                }
+
+                /* Held, the title keeps to one line, cut short when longer, so the card's minimum holds at any width. */
+                .held .card-title {
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
 
                 ha-card.untitled {
