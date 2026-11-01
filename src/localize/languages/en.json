@@ -4,6 +4,7 @@
         "description": "The repositories the GitHub integration follows, with their versions, issues, pull requests and unreleased commits.",
         "invalid_configuration": "Invalid configuration. repos and exclude are lists of owner/repo names.",
         "invalid_height": "Invalid height. height and max_height must be positive numbers of pixels, and height_mode auto, fixed or max.",
+        "invalid_row_step": "Invalid rounding. row_step must be full or half.",
         "no_repos": "No repositories. Add them to the GitHub integration in Home Assistant.",
         "none_shown": "No repositories to show.",
         "not_followed": "{repo} isn't followed by the GitHub integration.",
@@ -58,6 +59,10 @@
         "height": "Fixed height",
         "height_helper": "The card is always this tall, and the list scrolls inside it.",
         "max_height": "Maximum height",
-        "max_height_helper": "The card grows with its content up to this height, and then the list scrolls."
+        "max_height_helper": "The card grows with its content up to this height, and then the list scrolls.",
+        "row_step": "Rounding in a sections view",
+        "row_step_helper": "With automatic row height, the card's height is rounded up to whole rows, or to half rows to save space.",
+        "row_step_full": "Whole rows",
+        "row_step_half": "Half rows"
     }
 }

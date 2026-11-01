@@ -1,8 +1,8 @@
 import type { NumberKey } from "./const";
 import type { LovelaceCardConfig } from "./hass";
-import type { HeightConfig } from "./height";
+import type { RowStepConfig } from "./rows";
 
-export interface GithubReposCardConfig extends LovelaceCardConfig, HeightConfig {
+export interface GithubReposCardConfig extends LovelaceCardConfig, RowStepConfig {
     title?: string;
     /** Only these repos, as `owner/repo`. */
     repos?: string[];

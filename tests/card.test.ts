@@ -426,6 +426,16 @@ describe("github-repos-card", () => {
         expect(() => element.setConfig(config({ height_mode: null, height: null, max_height: null }))).not.toThrow();
     });
 
+    it("refuses a row step other than whole or half rows, with an error about the rounding", () => {
+        const element = document.createElement("github-repos-card");
+        const config = (extra: Record<string, unknown>) => ({ type: "custom:github-repos-card", ...extra }) as never;
+        const error = translate(browserLanguage(), "common.invalid_row_step");
+        expect(error).toMatch(/^Invalid rounding\./);
+        expect(() => element.setConfig(config({ row_step: "quarter" }))).toThrow(error);
+        expect(() => element.setConfig(config({ row_step: "half" }))).not.toThrow();
+        expect(() => element.setConfig(config({ row_step: null }))).not.toThrow();
+    });
+
     it("redraws for a change in a GitHub sensor and ignores the rest of the house", async () => {
         const element = await card();
         const render = vi.spyOn(element as unknown as { render: () => unknown }, "render");

@@ -684,6 +684,41 @@ function tidyHeight(config) {
   return tidied;
 }
 
+// src/rows.ts
+var ROW_STEPS = ["full", "half"];
+var ROW_PX = 64;
+var ROW_GAP_PX = 8;
+function validRowStep(config) {
+  return config.row_step === void 0 || config.row_step === null || ROW_STEPS.includes(config.row_step);
+}
+function filledHeight(content, config) {
+  const step = config.row_step === "half" ? ROW_PX / 2 : ROW_PX;
+  return Math.max(1, Math.ceil((content + ROW_GAP_PX) / step)) * step - ROW_GAP_PX;
+}
+function rowStepSchema(config, text) {
+  if (heightMode(config) !== "auto") {
+    return [];
+  }
+  return [
+    {
+      name: "row_step",
+      selector: {
+        select: { mode: "dropdown", options: ROW_STEPS.map((value) => ({ value, label: text(`editor.row_step_${value}`) })) }
+      }
+    }
+  ];
+}
+function rowStepData(config) {
+  return { ...config, row_step: config.row_step ?? "full" };
+}
+function tidyRowStep(config) {
+  const tidied = { ...config };
+  if (tidied.row_step !== "half" || heightMode(tidied) !== "auto") {
+    delete tidied.row_step;
+  }
+  return tidied;
+}
+
 // src/localize/languages/en.json
 var en_default = {
   common: {
@@ -691,6 +726,7 @@ var en_default = {
     description: "The repositories the GitHub integration follows, with their versions, issues, pull requests and unreleased commits.",
     invalid_configuration: "Invalid configuration. repos and exclude are lists of owner/repo names.",
     invalid_height: "Invalid height. height and max_height must be positive numbers of pixels, and height_mode auto, fixed or max.",
+    invalid_row_step: "Invalid rounding. row_step must be full or half.",
     no_repos: "No repositories. Add them to the GitHub integration in Home Assistant.",
     none_shown: "No repositories to show.",
     not_followed: "{repo} isn't followed by the GitHub integration.",
@@ -745,7 +781,11 @@ var en_default = {
     height: "Fixed height",
     height_helper: "The card is always this tall, and the list scrolls inside it.",
     max_height: "Maximum height",
-    max_height_helper: "The card grows with its content up to this height, and then the list scrolls."
+    max_height_helper: "The card grows with its content up to this height, and then the list scrolls.",
+    row_step: "Rounding in a sections view",
+    row_step_helper: "With automatic row height, the card's height is rounded up to whole rows, or to half rows to save space.",
+    row_step_full: "Whole rows",
+    row_step_half: "Half rows"
   }
 };
 
@@ -756,6 +796,7 @@ var fi_default = {
     description: "GitHub-integraation seuraamat repot, niiden versiot, seikat, vetopyynn\xF6t ja julkaisemattomat muutokset.",
     invalid_configuration: "Virheelliset asetukset. repos ja exclude ovat listoja muodossa omistaja/repo.",
     invalid_height: "Virheellinen korkeus. Korkeuksien (height ja max_height) on oltava positiivisia lukuja pikselein\xE4, ja korkeustilan (height_mode) auto, fixed tai max.",
+    invalid_row_step: "Virheellinen py\xF6ristys. Py\xF6ristyksen (row_step) on oltava full tai half.",
     no_repos: "Ei repoja. Lis\xE4\xE4 ne Home Assistantin GitHub-integraatioon.",
     none_shown: "Ei n\xE4ytett\xE4vi\xE4 repoja.",
     not_followed: "GitHub-integraatio ei seuraa repoa {repo}.",
@@ -810,7 +851,11 @@ var fi_default = {
     height: "Kiinte\xE4 korkeus",
     height_helper: "Kortti on aina n\xE4in korkea, ja lista vierii sen sis\xE4ll\xE4.",
     max_height: "Enimm\xE4iskorkeus",
-    max_height_helper: "Kortti kasvaa sis\xE4lt\xF6ns\xE4 mukana t\xE4h\xE4n korkeuteen asti, ja sen j\xE4lkeen lista vierii."
+    max_height_helper: "Kortti kasvaa sis\xE4lt\xF6ns\xE4 mukana t\xE4h\xE4n korkeuteen asti, ja sen j\xE4lkeen lista vierii.",
+    row_step: "Py\xF6ristys osioihin jaetussa n\xE4kym\xE4ss\xE4",
+    row_step_helper: "Automaattisella rivikorkeudella kortin korkeus py\xF6ristet\xE4\xE4n yl\xF6sp\xE4in kokonaisiin riveihin, tai tilan s\xE4\xE4st\xE4miseksi puolikkaisiin riveihin.",
+    row_step_full: "Kokonaisiin riveihin",
+    row_step_half: "Puolikkaisiin riveihin"
   }
 };
 
@@ -983,7 +1028,8 @@ function schema(hass, config, language, text) {
         }
       }
     },
-    ...heightSchema(config, text)
+    ...heightSchema(config, text),
+    ...rowStepSchema(config, text)
   ];
 }
 var GithubReposCardEditor = class extends i4 {
@@ -1001,7 +1047,7 @@ var GithubReposCardEditor = class extends i4 {
     return b2`
             <ha-form
                 .hass=${this.hass}
-                .data=${{ ...DEFAULTS, ...heightData(this.config) }}
+                .data=${{ ...DEFAULTS, ...rowStepData(heightData(this.config)) }}
                 .schema=${schema(this.hass, this.config, this.language(), (key) => this.text(key))}
                 .computeLabel=${(entry) => this.text(`editor.${entry.name}`)}
                 .computeHelper=${(entry) => this.helper(entry.name)}
@@ -1010,7 +1056,7 @@ var GithubReposCardEditor = class extends i4 {
         `;
   }
   valueChanged(event) {
-    const config = tidyHeight(event.detail.value);
+    const config = tidyRowStep(tidyHeight(event.detail.value));
     for (const key of Object.keys(config)) {
       const value = config[key];
       if (value === DEFAULTS[key] || value === void 0 || value === null || value === "" || Array.isArray(value) && !value.length) {
@@ -1148,6 +1194,7 @@ console.info(
 );
 var MIN_COLUMNS = 9;
 var WHOLE_SECTION_PX = 286;
+var TITLE_GAP_PX = 8;
 var registry = window;
 registry.customCards = registry.customCards ?? [];
 registry.customCards.push({
@@ -1163,6 +1210,7 @@ var GithubReposCard = class extends i4 {
     this.open = false;
     this.sliding = false;
     this.filled = 0;
+    this.spare = 0;
     /** Whether any shown repo has a version, so one without keeps the version's place on one line. */
     this.versions = false;
     this.oneLine = false;
@@ -1197,6 +1245,9 @@ var GithubReposCard = class extends i4 {
     }
     if (!validHeight(config)) {
       throw new Error(translate(browserLanguage(), "common.invalid_height"));
+    }
+    if (!validRowStep(config)) {
+      throw new Error(translate(browserLanguage(), "common.invalid_row_step"));
     }
     this.config = { ...config };
   }
@@ -1268,27 +1319,41 @@ var GithubReposCard = class extends i4 {
   }
   /**
    * In a sections view whose rows are left automatic, the card takes the whole rows its content needs (56 px each and
-   * the 8 px gaps between them), so the cards under it stay on the rows. Each part is a step of half a row, so this
-   * matters only when they add up to a half: a title and an odd number of repos on one line, no title, or a message.
+   * the 8 px gaps between them), or the half rows with `row_step: half`, so the cards under it stay on the rows. Each
+   * part is a step of half a row, so this matters only when they add up to a half: a title and an odd number of repos
+   * on one line, no title, or a message. The half row left over goes under the title, not under the repos, and is
+   * measured out of the content again each time.
    */
   fillRows() {
     const card = this.renderRoot.querySelector("ha-card");
     const list = this.renderRoot.querySelector(".repos");
     if (!card || !list || !card.clientWidth || this.layout !== "grid" || this.heightStyle()) {
       if (this.filled) this.filled = 0;
+      if (this.spare) this.spare = 0;
       return;
     }
     const last = list.lastElementChild ?? list;
     const style = getComputedStyle(card);
-    let content = last.getBoundingClientRect()[last === list ? "top" : "bottom"] - card.getBoundingClientRect().top + (parseFloat(style.paddingBottom) || 0) + (parseFloat(style.borderBottomWidth) || 0);
+    let content = last.getBoundingClientRect()[last === list ? "top" : "bottom"] - card.getBoundingClientRect().top + (parseFloat(style.paddingBottom) || 0) + (parseFloat(style.borderBottomWidth) || 0) - this.spareShown(card);
     const slide = list.querySelector(".slide");
     if (slide) {
       content += (this.open ? slide.firstElementChild?.scrollHeight ?? 0 : 0) - slide.getBoundingClientRect().height;
     }
-    const filled = Math.ceil((Math.round(content) + 8) / 64) * 64 - 8;
+    const filled = filledHeight(Math.round(content), this.config ?? {});
+    const spare = Math.max(0, Math.floor(filled - content));
     if (filled !== this.filled) {
       this.filled = filled;
     }
+    if (spare !== this.spare) {
+      this.spare = spare;
+    }
+  }
+  /** The spare room as drawn now, which while the quiet repos slide is somewhere between the old and the new. */
+  spareShown(card) {
+    const title = card.querySelector(":scope > .card-title");
+    const first = card.firstElementChild;
+    const shown = title ? parseFloat(getComputedStyle(title).marginBottom) - TITLE_GAP_PX : first ? parseFloat(getComputedStyle(first).marginTop) : 0;
+    return Math.max(0, shown || 0);
   }
   /**
    * Every repo on one line when every one of them fits, its full name at its own width, the version and the numbers
@@ -1368,7 +1433,10 @@ var GithubReposCard = class extends i4 {
       held && "held"
     ];
     return b2`
-            <ha-card class="${classes.filter(Boolean).join(" ")}" style=${held || (this.filled ? `min-height: ${this.filled}px` : "")}>
+            <ha-card
+                class="${classes.filter(Boolean).join(" ")}"
+                style=${held || (this.filled ? `min-height: ${this.filled}px; --github-repos-spare: ${this.spare}px` : "")}
+            >
                 ${config.title ? b2`<h1 class="card-title">${config.title}</h1>` : A}
                 ${missing.map((name) => b2`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
                 ${empty ? b2`<div class="message">${this.text(empty)}</div>` : A}
@@ -1500,8 +1568,9 @@ var GithubReposCard = class extends i4 {
                  * whole rows: the padding and the title take 56 px (24 without a title), a repo on two lines and the fold
                  * 64, and on one line 32.
                  */
+                /* The room a whole row leaves over goes under the title, or at the top without one. */
                 .card-title {
-                    margin: 0 16px 8px;
+                    margin: 0 16px calc(8px + var(--github-repos-spare, 0px));
                     font-size: var(--ha-card-header-font-size, 24px);
                     font-weight: var(--ha-font-weight-normal, 400);
                     line-height: 28px;
@@ -1772,14 +1841,25 @@ var GithubReposCard = class extends i4 {
                     overflow-y: hidden;
                 }
 
-                /* The rows the card fills change along with the slide, not on ha-card's own timing. */
+                .untitled > :first-child {
+                    margin-top: var(--github-repos-spare, 0px);
+                }
+
+                /* The rows the card fills, and the room under the title, change along with the slide, not on ha-card's own timing. */
                 ha-card.sliding {
                     transition: min-height var(--ha-animation-duration-normal, 250ms) ease;
+                }
+
+                ha-card.sliding > .card-title,
+                ha-card.sliding.untitled > :first-child {
+                    transition: margin var(--ha-animation-duration-normal, 250ms) ease;
                 }
 
                 @media (prefers-reduced-motion: reduce) {
                     .slide,
                     ha-card.sliding,
+                    ha-card.sliding > .card-title,
+                    ha-card.sliding.untitled > :first-child,
                     .fold .chevron {
                         transition: none;
                     }
@@ -1827,6 +1907,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], GithubReposCard.prototype, "filled", 2);
+__decorateClass([
+  r5()
+], GithubReposCard.prototype, "spare", 2);
 __decorateClass([
   r5()
 ], GithubReposCard.prototype, "oneLine", 2);

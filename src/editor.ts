@@ -9,6 +9,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { DEFAULT_TAP, NUMBERS, TODOS } from "./const";
 import type { HomeAssistant } from "./hass";
 import { heightData, heightSchema, tidyHeight } from "./height";
+import { rowStepData, rowStepSchema, tidyRowStep } from "./rows";
 import { LANGUAGE_CODES, browserLanguage, translate } from "./localize/localize";
 import { reposOf } from "./repos";
 import type { GithubReposCardConfig } from "./types";
@@ -67,6 +68,7 @@ function schema(hass: HomeAssistant, config: GithubReposCardConfig, language: st
             },
         },
         ...heightSchema(config, text),
+        ...rowStepSchema(config, text),
     ];
 }
 
@@ -86,7 +88,7 @@ export class GithubReposCardEditor extends LitElement {
         return html`
             <ha-form
                 .hass=${this.hass}
-                .data=${{ ...DEFAULTS, ...heightData(this.config) }}
+                .data=${{ ...DEFAULTS, ...rowStepData(heightData(this.config)) }}
                 .schema=${schema(this.hass, this.config, this.language(), (key) => this.text(key))}
                 .computeLabel=${(entry: SchemaEntry) => this.text(`editor.${entry.name}`)}
                 .computeHelper=${(entry: SchemaEntry) => this.helper(entry.name)}
@@ -96,7 +98,7 @@ export class GithubReposCardEditor extends LitElement {
     }
 
     private valueChanged(event: CustomEvent<{ value: GithubReposCardConfig }>): void {
-        const config: GithubReposCardConfig = tidyHeight(event.detail.value);
+        const config: GithubReposCardConfig = tidyRowStep(tidyHeight(event.detail.value));
         // The defaults are shown in the form but left out of the configuration, as are empty texts and lists.
         for (const key of Object.keys(config)) {
             const value = config[key];

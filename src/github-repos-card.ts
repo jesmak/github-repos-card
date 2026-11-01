@@ -13,6 +13,7 @@ import "./editor";
 import { ScrollFade, fadeStyles } from "./fade";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows, heightCardSize, heightStyle, validHeight } from "./height";
+import { filledHeight, validRowStep } from "./rows";
 import { browserLanguage, translate } from "./localize/localize";
 import { byOwner, formatNumber, githubSensors, hasTodo, reposOf, selectRepos, shownNumbers } from "./repos";
 import type { GithubReposCardConfig, Repo } from "./types";
@@ -35,6 +36,8 @@ interface CardRegistration {
 const MIN_COLUMNS = 9;
 /** The least room inside its border a card on a whole section gets: a phone's section with a background of its own. */
 const WHOLE_SECTION_PX = 286;
+/** The gap under the title, to which the spare room of a whole row is added. */
+const TITLE_GAP_PX = 8;
 
 const registry = window as unknown as { customCards?: CardRegistration[] };
 registry.customCards = registry.customCards ?? [];
@@ -56,6 +59,8 @@ export class GithubReposCard extends LitElement {
     @state() private sliding = false;
     /** In a sections view with rows left automatic: the whole rows that hold the content, in pixels. */
     @state() private filled = 0;
+    /** The room a whole row leaves over, put under the title rather than under the repos. */
+    @state() private spare = 0;
     private slideTimer?: number;
     /** Whether any shown repo has a version, so one without keeps the version's place on one line. */
     private versions = false;
@@ -93,6 +98,9 @@ export class GithubReposCard extends LitElement {
         }
         if (!validHeight(config)) {
             throw new Error(translate(browserLanguage(), "common.invalid_height"));
+        }
+        if (!validRowStep(config)) {
+            throw new Error(translate(browserLanguage(), "common.invalid_row_step"));
         }
         this.config = { ...config };
     }
@@ -178,14 +186,17 @@ export class GithubReposCard extends LitElement {
 
     /**
      * In a sections view whose rows are left automatic, the card takes the whole rows its content needs (56 px each and
-     * the 8 px gaps between them), so the cards under it stay on the rows. Each part is a step of half a row, so this
-     * matters only when they add up to a half: a title and an odd number of repos on one line, no title, or a message.
+     * the 8 px gaps between them), or the half rows with `row_step: half`, so the cards under it stay on the rows. Each
+     * part is a step of half a row, so this matters only when they add up to a half: a title and an odd number of repos
+     * on one line, no title, or a message. The half row left over goes under the title, not under the repos, and is
+     * measured out of the content again each time.
      */
     private fillRows(): void {
         const card = this.renderRoot.querySelector<HTMLElement>("ha-card");
         const list = this.renderRoot.querySelector<HTMLElement>(".repos");
         if (!card || !list || !card.clientWidth || this.layout !== "grid" || this.heightStyle()) {
             if (this.filled) this.filled = 0;
+            if (this.spare) this.spare = 0;
             return;
         }
         // Measured to the content's own end, as the list grows to whatever height the card is given, and to where the
@@ -196,15 +207,32 @@ export class GithubReposCard extends LitElement {
             last.getBoundingClientRect()[last === list ? "top" : "bottom"] -
             card.getBoundingClientRect().top +
             (parseFloat(style.paddingBottom) || 0) +
-            (parseFloat(style.borderBottomWidth) || 0);
+            (parseFloat(style.borderBottomWidth) || 0) -
+            this.spareShown(card);
         const slide = list.querySelector<HTMLElement>(".slide");
         if (slide) {
             content += (this.open ? (slide.firstElementChild?.scrollHeight ?? 0) : 0) - slide.getBoundingClientRect().height;
         }
-        const filled = Math.ceil((Math.round(content) + 8) / 64) * 64 - 8;
+        const filled = filledHeight(Math.round(content), this.config ?? {});
+        const spare = Math.max(0, Math.floor(filled - content));
         if (filled !== this.filled) {
             this.filled = filled;
         }
+        if (spare !== this.spare) {
+            this.spare = spare;
+        }
+    }
+
+    /** The spare room as drawn now, which while the quiet repos slide is somewhere between the old and the new. */
+    private spareShown(card: HTMLElement): number {
+        const title = card.querySelector<HTMLElement>(":scope > .card-title");
+        const first = card.firstElementChild as HTMLElement | null;
+        const shown = title
+            ? parseFloat(getComputedStyle(title).marginBottom) - TITLE_GAP_PX
+            : first
+              ? parseFloat(getComputedStyle(first).marginTop)
+              : 0;
+        return Math.max(0, shown || 0);
     }
 
     /**
@@ -295,7 +323,10 @@ export class GithubReposCard extends LitElement {
             held && "held",
         ];
         return html`
-            <ha-card class="${classes.filter(Boolean).join(" ")}" style=${held || (this.filled ? `min-height: ${this.filled}px` : "")}>
+            <ha-card
+                class="${classes.filter(Boolean).join(" ")}"
+                style=${held || (this.filled ? `min-height: ${this.filled}px; --github-repos-spare: ${this.spare}px` : "")}
+            >
                 ${config.title ? html`<h1 class="card-title">${config.title}</h1>` : nothing}
                 ${missing.map((name) => html`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
                 ${empty ? html`<div class="message">${this.text(empty)}</div>` : nothing}
@@ -458,8 +489,9 @@ export class GithubReposCard extends LitElement {
                  * whole rows: the padding and the title take 56 px (24 without a title), a repo on two lines and the fold
                  * 64, and on one line 32.
                  */
+                /* The room a whole row leaves over goes under the title, or at the top without one. */
                 .card-title {
-                    margin: 0 16px 8px;
+                    margin: 0 16px calc(8px + var(--github-repos-spare, 0px));
                     font-size: var(--ha-card-header-font-size, 24px);
                     font-weight: var(--ha-font-weight-normal, 400);
                     line-height: 28px;
@@ -730,14 +762,25 @@ export class GithubReposCard extends LitElement {
                     overflow-y: hidden;
                 }
 
-                /* The rows the card fills change along with the slide, not on ha-card's own timing. */
+                .untitled > :first-child {
+                    margin-top: var(--github-repos-spare, 0px);
+                }
+
+                /* The rows the card fills, and the room under the title, change along with the slide, not on ha-card's own timing. */
                 ha-card.sliding {
                     transition: min-height var(--ha-animation-duration-normal, 250ms) ease;
+                }
+
+                ha-card.sliding > .card-title,
+                ha-card.sliding.untitled > :first-child {
+                    transition: margin var(--ha-animation-duration-normal, 250ms) ease;
                 }
 
                 @media (prefers-reduced-motion: reduce) {
                     .slide,
                     ha-card.sliding,
+                    ha-card.sliding > .card-title,
+                    ha-card.sliding.untitled > :first-child,
                     .fold .chevron {
                         transition: none;
                     }
