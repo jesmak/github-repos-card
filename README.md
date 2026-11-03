@@ -69,9 +69,11 @@ The card needs the GitHub integration, set up with the repositories you want to 
 | `height_mode`               | string  | How tall the card is. `auto` fits its content, `fixed` keeps it at `height`, `max` lets it grow up to `max_height`. In `fixed` and `max` the title and the messages stay in view and the list scrolls, and the card never gets lower than the title and one repository need. A height in grid rows, set in the layout tab of a sections view, is used instead | `fixed` when `height` is set, `max` when only `max_height` is, otherwise `auto` |
 | `height`                    | number  | The card's height in pixels, for `fixed`                                                                                                                                                                                                                                                                                                                      |                                                                                 |
 | `max_height`                | number  | The card's greatest height in pixels, for `max`                                                                                                                                                                                                                                                                                                               |                                                                                 |
-| `row_step`                  | string  | How the card rounds its height on automatic rows in a sections view, with `height_mode` `auto`. `full` rounds up to whole rows, with any half row left over under the title, and `half` to half rows, which saves space but may leave the cards under it half a row off the rows of the sections beside it                                                    | `full`                                                                          |
+| `row_step`                  | string  | How the card rounds its height on automatic rows in a sections view, with `height_mode` `auto` or `max`. `full` rounds up to whole rows, with any half row left over under the title, and `half` to half rows, which saves space but may leave the cards under it half a row off the rows of the sections beside it                                           | `full`                                                                          |
 
-Every option is in the card's visual editor.
+Every option is in the card's visual editor, except `height_mode`, `height` and `max_height`, which are set in YAML. In a
+sections view the layout tab sets the card's height. They are for where there is no layout tab, such as a masonry or
+panel view, or a stack or other card the card is inside, even in a sections view.
 
 ## What it shows
 
@@ -116,7 +118,9 @@ first and the numbers on the second, so the lines are all of a height.
 The card's parts are sized to fill whole rows of a sections view. With a title, a repository on two lines takes a row
 and a card fills its rows exactly. On one line a repository takes half a row, as does each one when no numbers are
 shown. The row that folds the quiet repositories is as tall as a repository, and an owner's header takes half a row. With its rows left automatic the card
-always takes whole rows, so when its parts add up to half a row, that half stays empty at its bottom.
+takes whole rows, so the cards under it stay on the rows, or with `row_step: half` half rows. A half row left over goes
+under the title. With `max_height`, it grows the same way up to that height rounded down to its rows, so it stays on the
+rows when it reaches it too.
 
 <img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-light.png#gh-light-mode-only" width="250" alt="Four repositories under two owners' headers on a narrow card, each with its version beside its name and its numbers on the line under them">
 <img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/narrow-dark.png#gh-dark-mode-only" width="250" alt="Four repositories under two owners' headers on a narrow card, each with its version beside its name and its numbers on the line under them">

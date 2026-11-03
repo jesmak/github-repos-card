@@ -650,39 +650,6 @@ function heightCardSize(config, content, minimum = 0) {
   }
   return mode === "max" && config.max_height ? Math.max(1, Math.min(content, Math.round(Math.max(config.max_height, minimum) / 50))) : content;
 }
-function heightSchema(config, text) {
-  const mode = heightMode(config);
-  const field = (name) => ({
-    name,
-    selector: { number: { min: 100, max: 2e3, step: 10, unit_of_measurement: "px", mode: "box" } }
-  });
-  return [
-    {
-      name: "height_mode",
-      selector: {
-        select: { mode: "dropdown", options: HEIGHT_MODES.map((value) => ({ value, label: text(`editor.height_mode_${value}`) })) }
-      }
-    },
-    ...mode === "fixed" ? [field("height")] : mode === "max" ? [field("max_height")] : []
-  ];
-}
-function heightData(config) {
-  return { ...config, height_mode: heightMode(config) };
-}
-function tidyHeight(config) {
-  const mode = heightMode(config);
-  const tidied = { ...config };
-  if (mode !== "fixed" || !tidied.height) {
-    delete tidied.height;
-  }
-  if (mode !== "max" || !tidied.max_height) {
-    delete tidied.max_height;
-  }
-  if (!tidied.height_mode || heightMode({ ...tidied, height_mode: void 0 }) === mode) {
-    delete tidied.height_mode;
-  }
-  return tidied;
-}
 
 // src/rows.ts
 var ROW_STEPS = ["full", "half"];
@@ -691,12 +658,34 @@ var ROW_GAP_PX = 8;
 function validRowStep(config) {
   return config.row_step === void 0 || config.row_step === null || ROW_STEPS.includes(config.row_step);
 }
-function filledHeight(content, config) {
-  const step = config.row_step === "half" ? ROW_PX / 2 : ROW_PX;
-  return Math.max(1, Math.ceil((content + ROW_GAP_PX) / step)) * step - ROW_GAP_PX;
+var step = (config) => config.row_step === "half" ? ROW_PX / 2 : ROW_PX;
+function filledHeight(content, config, limit = Infinity) {
+  return Math.min(Math.max(1, Math.ceil((content + ROW_GAP_PX) / step(config))) * step(config) - ROW_GAP_PX, limit);
+}
+function fillLimit(config, layout, minimum = 0) {
+  const rows = config.grid_options ? config.grid_options.rows : config.layout_options?.grid_rows;
+  if (layout !== "grid" || typeof rows === "number") {
+    return 0;
+  }
+  const mode = heightMode(config);
+  if (mode === "fixed" && config.height) {
+    return 0;
+  }
+  if (mode !== "max" || !config.max_height) {
+    return Infinity;
+  }
+  const down = Math.floor((config.max_height + ROW_GAP_PX) / step(config)) * step(config) - ROW_GAP_PX;
+  return Math.max(down, filledHeight(minimum, config));
+}
+function filledStyle(config, layout, minimum, filled) {
+  const limit = fillLimit(config, layout, minimum);
+  if (!limit) {
+    return heightStyle(config, layout, minimum);
+  }
+  return [limit < Infinity && `max-height: ${limit}px`, filled && `min-height: ${filled}px`].filter(Boolean).join("; ");
 }
 function rowStepSchema(config, text) {
-  if (heightMode(config) !== "auto") {
+  if (heightMode(config) === "fixed" && config.height) {
     return [];
   }
   return [
@@ -713,7 +702,7 @@ function rowStepData(config) {
 }
 function tidyRowStep(config) {
   const tidied = { ...config };
-  if (tidied.row_step !== "half" || heightMode(tidied) !== "auto") {
+  if (tidied.row_step !== "half" || heightMode(tidied) === "fixed" && tidied.height) {
     delete tidied.row_step;
   }
   return tidied;
@@ -773,15 +762,6 @@ var en_default = {
     tap_more_info: "Show more info",
     language: "Language",
     language_helper: "Home Assistant's language when left empty.",
-    height_mode: "Height",
-    height_mode_helper: "A height set in the layout tab of a sections view is used instead.",
-    height_mode_auto: "Fits the content",
-    height_mode_fixed: "Fixed",
-    height_mode_max: "Grows up to a limit",
-    height: "Fixed height",
-    height_helper: "The card is always this tall, and the list scrolls inside it.",
-    max_height: "Maximum height",
-    max_height_helper: "The card grows with its content up to this height, and then the list scrolls.",
     row_step: "Rounding in a sections view",
     row_step_helper: "With automatic row height, the card's height is rounded up to whole rows, or to half rows to save space.",
     row_step_full: "Whole rows",
@@ -843,15 +823,6 @@ var fi_default = {
     tap_more_info: "N\xE4yt\xE4 lis\xE4tiedot",
     language: "Kieli",
     language_helper: "Tyhj\xE4n\xE4 Home Assistantin kieli.",
-    height_mode: "Korkeus",
-    height_mode_helper: "Osioihin jaetun n\xE4kym\xE4n asettelu-v\xE4lilehdell\xE4 asetettu korkeus ohittaa t\xE4m\xE4n.",
-    height_mode_auto: "Sis\xE4ll\xF6n mukaan",
-    height_mode_fixed: "Kiinte\xE4",
-    height_mode_max: "Kasvaa rajaan asti",
-    height: "Kiinte\xE4 korkeus",
-    height_helper: "Kortti on aina n\xE4in korkea, ja lista vierii sen sis\xE4ll\xE4.",
-    max_height: "Enimm\xE4iskorkeus",
-    max_height_helper: "Kortti kasvaa sis\xE4lt\xF6ns\xE4 mukana t\xE4h\xE4n korkeuteen asti, ja sen j\xE4lkeen lista vierii.",
     row_step: "Py\xF6ristys osioihin jaetussa n\xE4kym\xE4ss\xE4",
     row_step_helper: "Automaattisella rivikorkeudella kortin korkeus py\xF6ristet\xE4\xE4n yl\xF6sp\xE4in kokonaisiin riveihin, tai tilan s\xE4\xE4st\xE4miseksi puolikkaisiin riveihin.",
     row_step_full: "Kokonaisiin riveihin",
@@ -1028,7 +999,6 @@ function schema(hass, config, language, text) {
         }
       }
     },
-    ...heightSchema(config, text),
     ...rowStepSchema(config, text)
   ];
 }
@@ -1047,7 +1017,7 @@ var GithubReposCardEditor = class extends i4 {
     return b2`
             <ha-form
                 .hass=${this.hass}
-                .data=${{ ...DEFAULTS, ...rowStepData(heightData(this.config)) }}
+                .data=${{ ...DEFAULTS, ...rowStepData(this.config) }}
                 .schema=${schema(this.hass, this.config, this.language(), (key) => this.text(key))}
                 .computeLabel=${(entry) => this.text(`editor.${entry.name}`)}
                 .computeHelper=${(entry) => this.helper(entry.name)}
@@ -1056,7 +1026,7 @@ var GithubReposCardEditor = class extends i4 {
         `;
   }
   valueChanged(event) {
-    const config = tidyRowStep(tidyHeight(event.detail.value));
+    const config = tidyRowStep(event.detail.value);
     for (const key of Object.keys(config)) {
       const value = config[key];
       if (value === DEFAULTS[key] || value === void 0 || value === null || value === "" || Array.isArray(value) && !value.length) {
@@ -1319,7 +1289,8 @@ var GithubReposCard = class extends i4 {
   }
   /**
    * In a sections view whose rows are left automatic, the card takes the whole rows its content needs (56 px each and
-   * the 8 px gaps between them), or the half rows with `row_step: half`, so the cards under it stay on the rows. Each
+   * the 8 px gaps between them), or the half rows with `row_step: half`, so the cards under it stay on the rows, up to
+   * the limit of a card that grows up to one. Each
    * part is a step of half a row, so this matters only when they add up to a half: a title and an odd number of repos
    * on one line, no title, or a message. The half row left over goes under the title, not under the repos, and is
    * measured out of the content again each time.
@@ -1327,7 +1298,8 @@ var GithubReposCard = class extends i4 {
   fillRows() {
     const card = this.renderRoot.querySelector("ha-card");
     const list = this.renderRoot.querySelector(".repos");
-    if (!card || !list || !card.clientWidth || this.layout !== "grid" || this.heightStyle()) {
+    const limit = fillLimit(this.config ?? {}, this.layout, this.minimumHeight());
+    if (!card || !list || !card.clientWidth || !limit) {
       if (this.filled) this.filled = 0;
       if (this.spare) this.spare = 0;
       return;
@@ -1339,7 +1311,7 @@ var GithubReposCard = class extends i4 {
     if (slide) {
       content += (this.open ? slide.firstElementChild?.scrollHeight ?? 0 : 0) - slide.getBoundingClientRect().height;
     }
-    const filled = filledHeight(Math.round(content), this.config ?? {});
+    const filled = filledHeight(Math.round(content), this.config ?? {}, limit);
     const spare = Math.max(0, Math.floor(filled - content));
     if (filled !== this.filled) {
       this.filled = filled;
@@ -1395,6 +1367,11 @@ var GithubReposCard = class extends i4 {
       this.oneLine = fits;
     }
   }
+  /** The card's inline style: the height it is held to, or the rows it fills up to any limit, with their spare room under the title. */
+  cardStyle() {
+    const style = filledStyle(this.config ?? {}, this.layout, this.minimumHeight(), this.filled);
+    return this.filled ? `${style}; --github-repos-spare: ${this.spare}px` : style;
+  }
   heightStyle() {
     return heightStyle(this.config ?? {}, this.layout, this.minimumHeight());
   }
@@ -1433,10 +1410,7 @@ var GithubReposCard = class extends i4 {
       held && "held"
     ];
     return b2`
-            <ha-card
-                class="${classes.filter(Boolean).join(" ")}"
-                style=${held || (this.filled ? `min-height: ${this.filled}px; --github-repos-spare: ${this.spare}px` : "")}
-            >
+            <ha-card class="${classes.filter(Boolean).join(" ")}" style=${this.cardStyle()}>
                 ${config.title ? b2`<h1 class="card-title">${config.title}</h1>` : A}
                 ${missing.map((name) => b2`<div class="message">${this.text("common.not_followed", { repo: name })}</div>`)}
                 ${empty ? b2`<div class="message">${this.text(empty)}</div>` : A}

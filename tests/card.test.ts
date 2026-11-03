@@ -160,6 +160,29 @@ describe("github-repos-card", () => {
         expect(element.shadowRoot?.querySelector("ha-card")?.getAttribute("style") ?? "").toBe(style);
     });
 
+    // happy-dom lays nothing out, so the list's last repo ends where `bottom` says, under 16 px of padding and a 1 px border.
+    it.each<[string, number, string]>([
+        ["under its limit, on the rows its content needs", 150, "max-height: 568px; min-height: 184px; --github-repos-spare: 17px"],
+        ["over its limit, on the limit rounded down to the rows", 900, "max-height: 568px; min-height: 568px; --github-repos-spare: 0px"],
+    ])("grows up to a limit on automatic rows %s", async (_name, bottom, style) => {
+        const element = await card({ title: "Repos", max_height: 600, grid_options: { rows: "auto" } }, HASS, "grid");
+        const haCard = element.shadowRoot!.querySelector<HTMLElement>("ha-card")!;
+        Object.defineProperty(haCard, "clientWidth", { value: 454, configurable: true });
+        haCard.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+        const list = haCard.querySelector<HTMLElement>(".repos")!;
+        (list.lastElementChild as HTMLElement).getBoundingClientRect = () => ({ bottom }) as DOMRect;
+        vi.spyOn(window, "getComputedStyle").mockReturnValue({
+            paddingBottom: "16px",
+            borderBottomWidth: "1px",
+            marginBottom: "8px",
+            marginTop: "0px",
+        } as CSSStyleDeclaration);
+        (element as unknown as { fillRows(): void }).fillRows();
+        vi.restoreAllMocks();
+        await element.updateComplete;
+        expect(haCard.getAttribute("style") ?? "").toBe(style);
+    });
+
     // The padding and the title on one line (56 px, or 24 without a title) and one repo: its padding and two lines of
     // numbers with its name (65 px and 20 a line), or with no numbers its name alone, within a row of 32 px. The name
     // counts as one line on a whole section's width and as two on 9 to 11 columns, the narrowest the card goes. With repos
