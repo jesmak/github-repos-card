@@ -277,6 +277,31 @@ describe("github-repos-card", () => {
         expect(element.getGridOptions().min_rows).toBe(rows);
     });
 
+    it("chooses one line or two the same way from either layout, as a version is wider on one line", async () => {
+        const element = await card({ ...oneOwner, title: "Repos" });
+        const root = element.shadowRoot!;
+        const width = (value: number) => () => ({ width: value }) as DOMRect;
+        // A name of 200 px and numbers of 30 px. A version is 46 px drawn on two lines and 56 px on one, its one-line width.
+        for (const name of root.querySelectorAll<HTMLElement>(".name")) name.getBoundingClientRect = width(200);
+        for (const number of root.querySelectorAll<HTMLElement>(".number")) number.getBoundingClientRect = width(30);
+        for (const version of root.querySelectorAll<HTMLElement>(".version")) {
+            version.getBoundingClientRect = () =>
+                ({ width: version.style.width.includes("--one-line-version") || version.closest(".one-line") ? 56 : 46 }) as DOMRect;
+        }
+        const repo = root.querySelector<HTMLElement>(".repo")!;
+        const count = repo.querySelectorAll(".number").length;
+        const padding = (parseFloat(getComputedStyle(repo).paddingLeft) || 0) + (parseFloat(getComputedStyle(repo).paddingRight) || 0);
+        // Room for the version on two lines, but not on one
+        measuredAt(element, padding + 200 + 50 + count * 30 + (count - 1) * 8 + 20);
+        const choices = [];
+        for (let i = 0; i < 4; i++) {
+            element["measure"]();
+            await element.updateComplete;
+            choices.push(element["oneLine"]);
+        }
+        expect(choices).toEqual([false, false, false, false]);
+    });
+
     it("lowers its minimum again when it widens, and keeps it while hidden", async () => {
         const element = await card({ ...oneOwner, title: "Repos", height: 40 });
         const heights = [];

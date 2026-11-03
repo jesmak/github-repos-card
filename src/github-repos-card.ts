@@ -239,8 +239,8 @@ export class GithubReposCard extends LitElement {
 
     /**
      * Every repo on one line when every one of them fits, its full name at its own width, the version and the numbers
-     * beside it, and otherwise every repo on two, so the rows are all of a height. Measured at the parts' natural widths,
-     * which are the same in either layout, so the choice doesn't flip back and forth. A hidden card measures nothing.
+     * beside it, and otherwise every repo on two, so the rows are all of a height. Measured at the widths the parts have on
+     * one line, whichever layout is drawn, so the choice doesn't flip back and forth. A hidden card measures nothing.
      */
     private measure(): void {
         const card = this.renderRoot.querySelector<HTMLElement>("ha-card");
@@ -263,8 +263,13 @@ export class GithubReposCard extends LitElement {
             const wrap = name?.style.cssText ?? "";
             if (name) name.style.cssText = "white-space: nowrap; max-width: none";
             // Fractional widths, as whole pixels rounded down would let a name a fraction too wide wrap.
+            // The version at its width on one line, where every one is as wide as the widest and an empty one keeps its room.
+            // Measured at its own width on two lines, it would make the two layouts each choose the other.
+            const own = version?.style.cssText ?? "";
+            if (version) version.style.cssText = "display: block; width: var(--one-line-version)";
             const text = [name, version].reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width : 0), 0);
             if (name) name.style.cssText = wrap;
+            if (version) version.style.cssText = own;
             // On one line the columns are only as wide as their numbers, so they are measured at that width.
             const row = repo.querySelector<HTMLElement>(".numbers");
             const width = row?.style.getPropertyValue("--column-width") ?? "";
@@ -585,6 +590,8 @@ export class GithubReposCard extends LitElement {
                     line-height: 18px;
                     text-align: center;
                     white-space: nowrap;
+                    /* Its width on one line, which measure() holds it to in either layout */
+                    --one-line-version: max(44px, calc(var(--version-chars) * 1ch + 16px));
                 }
 
                 .version.unreleased {
@@ -666,7 +673,7 @@ export class GithubReposCard extends LitElement {
                 /* Every version as wide as the widest, so the numbers before them line up down the list. */
                 .one-line .version {
                     order: 1;
-                    width: max(44px, calc(var(--version-chars) * 1ch + 16px));
+                    width: var(--one-line-version);
                 }
 
                 .version.empty {

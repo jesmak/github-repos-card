@@ -1329,8 +1329,8 @@ var GithubReposCard = class extends i4 {
   }
   /**
    * Every repo on one line when every one of them fits, its full name at its own width, the version and the numbers
-   * beside it, and otherwise every repo on two, so the rows are all of a height. Measured at the parts' natural widths,
-   * which are the same in either layout, so the choice doesn't flip back and forth. A hidden card measures nothing.
+   * beside it, and otherwise every repo on two, so the rows are all of a height. Measured at the widths the parts have on
+   * one line, whichever layout is drawn, so the choice doesn't flip back and forth. A hidden card measures nothing.
    */
   measure() {
     const card = this.renderRoot.querySelector("ha-card");
@@ -1351,8 +1351,11 @@ var GithubReposCard = class extends i4 {
       const [name, version] = [".name", ".version"].map((part) => repo.querySelector(part));
       const wrap = name?.style.cssText ?? "";
       if (name) name.style.cssText = "white-space: nowrap; max-width: none";
+      const own = version?.style.cssText ?? "";
+      if (version) version.style.cssText = "display: block; width: var(--one-line-version)";
       const text = [name, version].reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width : 0), 0);
       if (name) name.style.cssText = wrap;
+      if (version) version.style.cssText = own;
       const row = repo.querySelector(".numbers");
       const width = row?.style.getPropertyValue("--column-width") ?? "";
       row?.style.setProperty("--column-width", "0px");
@@ -1633,6 +1636,8 @@ var GithubReposCard = class extends i4 {
                     line-height: 18px;
                     text-align: center;
                     white-space: nowrap;
+                    /* Its width on one line, which measure() holds it to in either layout */
+                    --one-line-version: max(44px, calc(var(--version-chars) * 1ch + 16px));
                 }
 
                 .version.unreleased {
@@ -1714,7 +1719,7 @@ var GithubReposCard = class extends i4 {
                 /* Every version as wide as the widest, so the numbers before them line up down the list. */
                 .one-line .version {
                     order: 1;
-                    width: max(44px, calc(var(--version-chars) * 1ch + 16px));
+                    width: var(--one-line-version);
                 }
 
                 .version.empty {
