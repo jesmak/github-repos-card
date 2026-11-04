@@ -78,7 +78,7 @@ export function hasUnreleased(tag: HassEntity | undefined, commit: HassEntity | 
 const compare = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base", numeric: true });
 
 /** Alphabetical by the repo's name, whatever its owner. */
-export function sortRepos(repos: Repo[]): Repo[] {
+function sortRepos(repos: Repo[]): Repo[] {
     return [...repos].sort((a, b) => compare(a.name, b.name) || compare(a.owner, b.owner));
 }
 

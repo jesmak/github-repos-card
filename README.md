@@ -87,8 +87,8 @@ The GitHub integration gives the commit of the newest tag only, not of the lates
 without releasing is compared with its newest tag. The newest tag can be on any branch, so in a repository whose
 newest tag is on a maintenance or beta branch the version stays orange. A repository with no release shows no version.
 
-Open issues are green and open pull requests purple when there are some, and grey at zero. The other numbers are
-dimmed. A number whose sensor is disabled or unavailable shows as a dash. Numbers of a thousand or more are shortened,
+Open issues are green and open pull requests purple when there are some. A number that is zero or missing is dimmed.
+A number whose sensor is disabled or unavailable shows as a dash. Numbers of a thousand or more are shortened,
 such as 1.2K.
 
 With folding on, a repository whose numbers are all unknown, as when the integration can't reach GitHub, is never

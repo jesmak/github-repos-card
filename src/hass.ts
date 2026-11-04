@@ -15,7 +15,7 @@ export interface HassEntityEntry {
     translation_key?: string | null;
 }
 
-export interface HassDevice {
+interface HassDevice {
     id: string;
     name?: string | null;
 }

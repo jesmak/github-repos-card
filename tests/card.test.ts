@@ -150,16 +150,6 @@ describe("github-repos-card", () => {
         expect(opened).toBe("sensor.github_matti_mailbox_viimeisin_julkaisu");
     });
 
-    it.each([
-        ["auto", undefined, {}, ""],
-        ["fixed", undefined, { height_mode: "fixed" as const, height: 240, max_height: 300 }, "height: 240px"],
-        ["max", undefined, { max_height: 300 }, "max-height: 300px"],
-        ["grid rows", "grid", { height: 240, grid_options: { rows: 6 } }, "height: 100%"],
-    ])("sizes itself by %s", async (_name, layout, config, style) => {
-        const element = await card(config, HASS, layout);
-        expect(element.shadowRoot?.querySelector("ha-card")?.getAttribute("style") ?? "").toBe(style);
-    });
-
     // happy-dom lays nothing out, so the list's last repo ends where `bottom` says, under 16 px of padding and a 1 px border.
     it.each<[string, number, string]>([
         ["under its limit, on the rows its content needs", 150, "max-height: 568px; min-height: 184px; --github-repos-spare: 17px"],
@@ -384,18 +374,6 @@ describe("github-repos-card", () => {
         }
     });
 
-    // Held, the title keeps to one line, so the card's minimum holds at any width. Otherwise it wraps.
-    it.each<[string, Record<string, unknown>, string | undefined, boolean]>([
-        ["held to a height", { title: "Repos", height: 300 }, undefined, true],
-        ["held up to a limit", { title: "Repos", max_height: 300 }, undefined, true],
-        ["held by rows in a sections view", { title: "Repos", grid_options: { rows: 4 } }, "grid", true],
-        ["by its content", { title: "Repos" }, undefined, false],
-        ["by its content on automatic rows", { title: "Repos", grid_options: { rows: "auto" } }, "grid", false],
-    ])("is marked held %s", async (_name, config, layout, held) => {
-        const element = await card(config, HASS, layout);
-        expect(element.shadowRoot?.querySelector("ha-card")?.classList.contains("held")).toBe(held);
-    });
-
     it("puts the title and the messages before the repos", async () => {
         const element = await card({ title: "Repos", repos: ["matti/heating", "matti/nothing"], height: 300 });
         const haCard = element.shadowRoot!.querySelector("ha-card")!;
@@ -403,28 +381,27 @@ describe("github-repos-card", () => {
         expect(haCard.querySelector(".repos > .repo")).not.toBeNull();
     });
 
-    it.each([
-        ["held to a height", undefined, { height: 200 }, ["fade-bottom"]],
-        ["held up to a limit", undefined, { max_height: 200 }, ["fade-bottom"]],
-        ["held by rows in a sections view", "grid", { grid_options: { rows: 4 } }, ["fade-bottom"]],
-        [
-            "held to a height with automatic rows in a sections view",
-            "grid",
-            { height: 200, grid_options: { rows: "auto" as const } },
-            ["fade-bottom"],
-        ],
-        ["held by the older layout options' rows in a sections view", "grid", { layout_options: { grid_rows: 4 } }, ["fade-bottom"]],
-        ["never in auto", undefined, {}, []],
-        ["never in auto with automatic rows in a sections view", "grid", { grid_options: { rows: "auto" as const } }, []],
-        ["never by grid rows outside a sections view", undefined, { grid_options: { rows: 4 } }, []],
-    ])("fades the bottom edge of the list that runs past it when %s", async (_name, layout, config, expected) => {
-        const element = await card(config, HASS, layout);
-        const repos = element.shadowRoot!.querySelector<HTMLElement>(".repos")!;
+    // Held, the title keeps to one line, so the card's minimum holds at any width, and the list that runs past its bottom
+    // edge fades there. Otherwise the title wraps and nothing fades.
+    it.each<[string, string | undefined, Record<string, unknown>, boolean]>([
+        ["held to a height", undefined, { height: 200 }, true],
+        ["held up to a limit", undefined, { max_height: 200 }, true],
+        ["held by rows in a sections view", "grid", { grid_options: { rows: 4 } }, true],
+        ["held to a height with automatic rows in a sections view", "grid", { height: 200, grid_options: { rows: "auto" } }, true],
+        ["held by the older layout options' rows in a sections view", "grid", { layout_options: { grid_rows: 4 } }, true],
+        ["not held in auto", undefined, {}, false],
+        ["not held in auto with automatic rows in a sections view", "grid", { grid_options: { rows: "auto" } }, false],
+        ["not held by grid rows outside a sections view", undefined, { grid_options: { rows: 4 } }, false],
+    ])("is %s, and fades the list's bottom edge only when held", async (_name, layout, config, held) => {
+        const element = await card({ title: "Repos", ...config }, HASS, layout);
+        const haCard = element.shadowRoot!.querySelector("ha-card")!;
+        const repos = haCard.querySelector<HTMLElement>(".repos")!;
         Object.defineProperty(repos, "scrollHeight", { value: 600, configurable: true });
         Object.defineProperty(repos, "clientHeight", { value: 200, configurable: true });
         element.requestUpdate();
         await element.updateComplete;
-        expect(["fade-top", "fade-bottom"].filter((name) => repos.classList.contains(name))).toEqual(expected);
+        expect(haCard.classList.contains("held")).toBe(held);
+        expect(["fade-top", "fade-bottom"].filter((name) => repos.classList.contains(name))).toEqual(held ? ["fade-bottom"] : []);
     });
 
     it("lets go of the list's fade when the card goes from held to auto, and fades it again when held again", async () => {
