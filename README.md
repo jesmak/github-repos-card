@@ -131,6 +131,7 @@ The colours can be changed in a theme:
 
 | Variable                          | Default                      |
 | --------------------------------- | ---------------------------- |
+| `--github-repos-stars-color`      | `#bf8700`                    |
 | `--github-repos-issues-color`     | `#2da44e`                    |
 | `--github-repos-pulls-color`      | `#8957e5`                    |
 | `--github-repos-unreleased-color` | `--warning-color`, `#ff9800` |

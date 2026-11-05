@@ -90,12 +90,13 @@ describe("github-repos-card", () => {
         expect([...(slide?.querySelectorAll(".owner") ?? [])].map((owner) => text(owner.querySelector(".owner-name")))).toEqual(["matti"]);
     });
 
-    it("colours issues and pull requests only when there are some", async () => {
+    it("colours stars, issues and pull requests only when there are some", async () => {
         const element = await card({ repos: ["matti/sauna_sensor", "matti/heating"] });
         const [heating, sauna] = [...(element.shadowRoot?.querySelectorAll(".numbers") ?? [])];
-        expect(heating.children[0].className).toContain("zero");
-        expect(heating.children[1].className).toContain("pulls");
-        expect(sauna.children[0].className).toContain("issues");
+        // Issues, pull requests, stars, forks and watchers, the watchers uncoloured however many there are.
+        const classes = (numbers: Element) => [...numbers.children].map((number) => number.classList[1] ?? "");
+        expect(classes(heating)).toEqual(["zero", "pulls", "zero", "zero", ""]);
+        expect(classes(sauna)).toEqual(["issues", "zero", "stars", "zero", ""]);
     });
 
     it("folds the repos with nothing to do into one line, which opens on a tap", async () => {
@@ -150,22 +151,31 @@ describe("github-repos-card", () => {
         expect(opened).toBe("sensor.github_matti_mailbox_viimeisin_julkaisu");
     });
 
-    // happy-dom lays nothing out, so the list's last repo ends where `bottom` says, under 16 px of padding and a 1 px border.
-    it.each<[string, number, string]>([
-        ["under its limit, on the rows its content needs", 150, "max-height: 568px; min-height: 184px; --github-repos-spare: 17px"],
-        ["over its limit, on the limit rounded down to the rows", 900, "max-height: 568px; min-height: 568px; --github-repos-spare: 0px"],
-    ])("grows up to a limit on automatic rows %s", async (_name, bottom, style) => {
+    // happy-dom lays nothing out, so the list's last repo ends where `bottom` says, under 16 px of padding and a 1 px border,
+    // drawn at `scale`, as a dialog opening draws the card.
+    it.each<[string, number, number, string]>([
+        ["under its limit, on the rows its content needs", 150, 1, "max-height: 568px; min-height: 184px; --github-repos-spare: 17px"],
+        [
+            "over its limit, on the limit rounded down to the rows",
+            900,
+            1,
+            "max-height: 568px; min-height: 568px; --github-repos-spare: 0px",
+        ],
+        ["a fraction of a pixel over a row, on the next one", 103.4, 1, "max-height: 568px; min-height: 184px; --github-repos-spare: 63px"],
+        ["drawn scaled, in the layout's pixels", 199, 0.8, "max-height: 568px; min-height: 248px; --github-repos-spare: 32px"],
+    ])("grows up to a limit on automatic rows %s", async (_name, bottom, scale, style) => {
         const element = await card({ title: "Repos", max_height: 600, grid_options: { rows: "auto" } }, HASS, "grid");
         const haCard = element.shadowRoot!.querySelector<HTMLElement>("ha-card")!;
         Object.defineProperty(haCard, "clientWidth", { value: 454, configurable: true });
-        haCard.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+        haCard.getBoundingClientRect = () => ({ top: 0, width: 454 * scale }) as DOMRect;
         const list = haCard.querySelector<HTMLElement>(".repos")!;
-        (list.lastElementChild as HTMLElement).getBoundingClientRect = () => ({ bottom }) as DOMRect;
+        (list.lastElementChild as HTMLElement).getBoundingClientRect = () => ({ bottom: bottom * scale }) as DOMRect;
         vi.spyOn(window, "getComputedStyle").mockReturnValue({
             paddingBottom: "16px",
             borderBottomWidth: "1px",
             marginBottom: "8px",
             marginTop: "0px",
+            width: "454px",
         } as CSSStyleDeclaration);
         (element as unknown as { fillRows(): void }).fillRows();
         vi.restoreAllMocks();
@@ -290,6 +300,34 @@ describe("github-repos-card", () => {
             choices.push(element["oneLine"]);
         }
         expect(choices).toEqual([false, false, false, false]);
+    });
+
+    // Names of 200 px, numbers of 30 px and versions of 56 px laid out, drawn at 0.8 as a dialog opening draws the card.
+    it.each([
+        ["keeps one line when it has the room", 0, true],
+        ["takes two lines when it is 10 px short, though its drawn widths would fit", -10, false],
+    ])("measured drawn scaled, %s", async (_name, spare, oneLine) => {
+        const element = await card({ ...oneOwner, title: "Repos" });
+        const root = element.shadowRoot!;
+        const scale = 0.8;
+        const width = (value: number) => () => ({ width: value * scale }) as DOMRect;
+        for (const name of root.querySelectorAll<HTMLElement>(".name")) name.getBoundingClientRect = width(200);
+        for (const number of root.querySelectorAll<HTMLElement>(".number")) number.getBoundingClientRect = width(30);
+        for (const version of root.querySelectorAll<HTMLElement>(".version")) version.getBoundingClientRect = width(56);
+        const repo = root.querySelector<HTMLElement>(".repo")!;
+        const count = repo.querySelectorAll(".number").length;
+        const padding = (parseFloat(getComputedStyle(repo).paddingLeft) || 0) + (parseFloat(getComputedStyle(repo).paddingRight) || 0);
+        const room = padding + 200 + 56 + count * 30 + (count - 1) * 8 + 20 + spare;
+        measuredAt(element, room);
+        const haCard = root.querySelector<HTMLElement>("ha-card")!;
+        haCard.getBoundingClientRect = width(room);
+        const computed = window.getComputedStyle;
+        vi.spyOn(window, "getComputedStyle").mockImplementation((target, pseudo) =>
+            target === haCard ? ({ ...computed(target, pseudo), width: `${room}px` } as CSSStyleDeclaration) : computed(target, pseudo),
+        );
+        element["measure"]();
+        vi.restoreAllMocks();
+        expect(element["oneLine"]).toBe(oneLine);
     });
 
     it("lowers its minimum again when it widens, and keeps it while hidden", async () => {

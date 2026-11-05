@@ -13,7 +13,7 @@ import "./editor";
 import { ScrollFade, fadeStyles } from "./fade";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows, heightCardSize, heightStyle, validHeight } from "./height";
-import { fillLimit, filledHeight, filledStyle, validRowStep } from "./rows";
+import { drawnScale, fillLimit, filledHeight, filledStyle, spareRoom, validRowStep } from "./rows";
 import { browserLanguage, translate } from "./localize/localize";
 import { byOwner, formatNumber, githubSensors, hasTodo, reposOf, selectRepos, shownNumbers } from "./repos";
 import type { GithubReposCardConfig, Repo } from "./types";
@@ -38,6 +38,8 @@ const MIN_COLUMNS = 9;
 const WHOLE_SECTION_PX = 286;
 /** The gap under the title, to which the spare room of a whole row is added. */
 const TITLE_GAP_PX = 8;
+/** The numbers coloured when there are some, by the class that gives each its colour. */
+const COLOURED: Partial<Record<NumberKey, string>> = { stargazers_count: "stars", issues_count: "issues", pulls_count: "pulls" };
 
 const registry = window as unknown as { customCards?: CardRegistration[] };
 registry.customCards = registry.customCards ?? [];
@@ -206,20 +208,21 @@ export class GithubReposCard extends LitElement {
         }
         // Measured to the content's own end, as the list grows to whatever height the card is given, and to where the
         // quiet repos' slide ends rather than where it is, so the card is on its rows the moment the slide begins.
+        // Drawn sizes are unscaled, as the padding, border and the slide's scroll height added to them are the layout's.
         const last = list.lastElementChild ?? list;
+        const scale = drawnScale(card);
         const style = getComputedStyle(card);
         let content =
-            last.getBoundingClientRect()[last === list ? "top" : "bottom"] -
-            card.getBoundingClientRect().top +
+            (last.getBoundingClientRect()[last === list ? "top" : "bottom"] - card.getBoundingClientRect().top) / scale +
             (parseFloat(style.paddingBottom) || 0) +
             (parseFloat(style.borderBottomWidth) || 0) -
             this.spareShown(card);
         const slide = list.querySelector<HTMLElement>(".slide");
         if (slide) {
-            content += (this.open ? (slide.firstElementChild?.scrollHeight ?? 0) : 0) - slide.getBoundingClientRect().height;
+            content += (this.open ? (slide.firstElementChild?.scrollHeight ?? 0) : 0) - slide.getBoundingClientRect().height / scale;
         }
-        const filled = filledHeight(Math.round(content), this.config ?? {}, limit);
-        const spare = Math.max(0, Math.floor(filled - content));
+        const filled = filledHeight(content, this.config ?? {}, limit);
+        const spare = spareRoom(filled, content);
         if (filled !== this.filled) {
             this.filled = filled;
         }
@@ -262,6 +265,8 @@ export class GithubReposCard extends LitElement {
         }
         const style = getComputedStyle(repos[0]);
         const room = card.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+        // Drawn widths are unscaled, as the room they are compared with is the layout's.
+        const scale = drawnScale(card);
         const fits = repos.every((repo) => {
             const [name, version] = [".name", ".version"].map((part) => repo.querySelector<HTMLElement>(part));
             // The name at its own width: on one line and uncapped by the room it has now.
@@ -272,7 +277,7 @@ export class GithubReposCard extends LitElement {
             // Measured at its own width on two lines, it would make the two layouts each choose the other.
             const own = version?.style.cssText ?? "";
             if (version) version.style.cssText = "display: block; width: var(--one-line-version)";
-            const text = [name, version].reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width : 0), 0);
+            const text = [name, version].reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width / scale : 0), 0);
             if (name) name.style.cssText = wrap;
             if (version) version.style.cssText = own;
             // On one line the columns are only as wide as their numbers, so they are measured at that width.
@@ -280,7 +285,7 @@ export class GithubReposCard extends LitElement {
             const width = row?.style.getPropertyValue("--column-width") ?? "";
             row?.style.setProperty("--column-width", "0px");
             const numbers = [...repo.querySelectorAll<HTMLElement>(".number")].reduce(
-                (sum, number, i) => sum + number.getBoundingClientRect().width + (i ? 8 : 0),
+                (sum, number, i) => sum + number.getBoundingClientRect().width / scale + (i ? 8 : 0),
                 0,
             );
             row?.style.setProperty("--column-width", width);
@@ -404,10 +409,10 @@ export class GithubReposCard extends LitElement {
         return html`<a class="repo" href=${repo.url} target="_blank" rel="noopener noreferrer">${body}</a>`;
     }
 
-    /** A number in its column. Issues and pull requests are coloured when there are some; a missing number is a dash. */
+    /** A number in its column. Stars, issues and pull requests are coloured when there are some; a missing number is a dash. */
     private number(repo: Repo, column: Column): TemplateResult {
         const value = repo.numbers[column.key];
-        const kind = column.key === "issues_count" ? "issues" : column.key === "pulls_count" ? "pulls" : "";
+        const kind = COLOURED[column.key] ?? "";
         return html`<span
             class="number ${value ? kind : "zero"}"
             style="--chars:${column.chars}"
@@ -486,6 +491,7 @@ export class GithubReposCard extends LitElement {
                     padding: 12px 0 6px;
                     font-variant-numeric: tabular-nums;
                     --column-width: 52px;
+                    --github-repos-stars: var(--github-repos-stars-color, #bf8700);
                     --github-repos-issues: var(--github-repos-issues-color, #2da44e);
                     --github-repos-pulls: var(--github-repos-pulls-color, #8957e5);
                     --github-repos-unreleased: var(--github-repos-unreleased-color, var(--warning-color, #ff9800));
@@ -639,6 +645,10 @@ export class GithubReposCard extends LitElement {
 
                 .number.zero {
                     opacity: 0.6;
+                }
+
+                .number.stars {
+                    color: var(--github-repos-stars);
                 }
 
                 .number.issues {

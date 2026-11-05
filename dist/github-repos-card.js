@@ -1,4 +1,4 @@
-/*! github-repos-card 1.1.0 | MIT License */
+/*! github-repos-card 1.1.1 | MIT License */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __decorateClass = (decorators, target, key, kind) => {
@@ -604,7 +604,7 @@ function r5(r6) {
 }
 
 // src/const.ts
-var CARD_VERSION = "1.1.0";
+var CARD_VERSION = "1.1.1";
 var NUMBERS = [
   { option: "show_issues", key: "issues_count", icon: "mdi:alert-circle-outline", shown: true },
   { option: "show_pull_requests", key: "pulls_count", icon: "mdi:source-pull", shown: true },
@@ -659,8 +659,17 @@ function validRowStep(config) {
   return config.row_step === void 0 || config.row_step === null || ROW_STEPS.includes(config.row_step);
 }
 var step = (config) => config.row_step === "half" ? ROW_PX / 2 : ROW_PX;
+var SLACK_PX = 0.01;
+function drawnScale(card) {
+  const layout = Number.parseFloat(getComputedStyle(card).width) || 0;
+  const drawn = card.getBoundingClientRect().width;
+  return layout > 0 && drawn > 0 ? drawn / layout : 1;
+}
 function filledHeight(content, config, limit = Infinity) {
-  return Math.min(Math.max(1, Math.ceil((content + ROW_GAP_PX) / step(config))) * step(config) - ROW_GAP_PX, limit);
+  return Math.min(Math.max(1, Math.ceil((content - SLACK_PX + ROW_GAP_PX) / step(config))) * step(config) - ROW_GAP_PX, limit);
+}
+function spareRoom(filled, content) {
+  return Math.max(0, Math.floor(filled - content + SLACK_PX));
 }
 function fillLimit(config, layout, minimum = 0) {
   const rows = config.grid_options ? config.grid_options.rows : config.layout_options?.grid_rows;
@@ -1165,6 +1174,7 @@ console.info(
 var MIN_COLUMNS = 9;
 var WHOLE_SECTION_PX = 286;
 var TITLE_GAP_PX = 8;
+var COLOURED = { stargazers_count: "stars", issues_count: "issues", pulls_count: "pulls" };
 var registry = window;
 registry.customCards = registry.customCards ?? [];
 registry.customCards.push({
@@ -1306,14 +1316,15 @@ var GithubReposCard = class extends i4 {
       return;
     }
     const last = list.lastElementChild ?? list;
+    const scale = drawnScale(card);
     const style = getComputedStyle(card);
-    let content = last.getBoundingClientRect()[last === list ? "top" : "bottom"] - card.getBoundingClientRect().top + (parseFloat(style.paddingBottom) || 0) + (parseFloat(style.borderBottomWidth) || 0) - this.spareShown(card);
+    let content = (last.getBoundingClientRect()[last === list ? "top" : "bottom"] - card.getBoundingClientRect().top) / scale + (parseFloat(style.paddingBottom) || 0) + (parseFloat(style.borderBottomWidth) || 0) - this.spareShown(card);
     const slide = list.querySelector(".slide");
     if (slide) {
-      content += (this.open ? slide.firstElementChild?.scrollHeight ?? 0 : 0) - slide.getBoundingClientRect().height;
+      content += (this.open ? slide.firstElementChild?.scrollHeight ?? 0 : 0) - slide.getBoundingClientRect().height / scale;
     }
-    const filled = filledHeight(Math.round(content), this.config ?? {}, limit);
-    const spare = Math.max(0, Math.floor(filled - content));
+    const filled = filledHeight(content, this.config ?? {}, limit);
+    const spare = spareRoom(filled, content);
     if (filled !== this.filled) {
       this.filled = filled;
     }
@@ -1350,20 +1361,21 @@ var GithubReposCard = class extends i4 {
     }
     const style = getComputedStyle(repos[0]);
     const room = card.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+    const scale = drawnScale(card);
     const fits = repos.every((repo) => {
       const [name, version] = [".name", ".version"].map((part) => repo.querySelector(part));
       const wrap = name?.style.cssText ?? "";
       if (name) name.style.cssText = "white-space: nowrap; max-width: none";
       const own = version?.style.cssText ?? "";
       if (version) version.style.cssText = "display: block; width: var(--one-line-version)";
-      const text = [name, version].reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width : 0), 0);
+      const text = [name, version].reduce((sum, part) => sum + (part ? part.getBoundingClientRect().width / scale : 0), 0);
       if (name) name.style.cssText = wrap;
       if (version) version.style.cssText = own;
       const row = repo.querySelector(".numbers");
       const width = row?.style.getPropertyValue("--column-width") ?? "";
       row?.style.setProperty("--column-width", "0px");
       const numbers = [...repo.querySelectorAll(".number")].reduce(
-        (sum, number, i5) => sum + number.getBoundingClientRect().width + (i5 ? 8 : 0),
+        (sum, number, i5) => sum + number.getBoundingClientRect().width / scale + (i5 ? 8 : 0),
         0
       );
       row?.style.setProperty("--column-width", width);
@@ -1470,10 +1482,10 @@ var GithubReposCard = class extends i4 {
     }
     return b2`<a class="repo" href=${repo.url} target="_blank" rel="noopener noreferrer">${body}</a>`;
   }
-  /** A number in its column. Issues and pull requests are coloured when there are some; a missing number is a dash. */
+  /** A number in its column. Stars, issues and pull requests are coloured when there are some; a missing number is a dash. */
   number(repo, column) {
     const value = repo.numbers[column.key];
-    const kind = column.key === "issues_count" ? "issues" : column.key === "pulls_count" ? "pulls" : "";
+    const kind = COLOURED[column.key] ?? "";
     return b2`<span
             class="number ${value ? kind : "zero"}"
             style="--chars:${column.chars}"
@@ -1530,6 +1542,7 @@ var GithubReposCard = class extends i4 {
                     padding: 12px 0 6px;
                     font-variant-numeric: tabular-nums;
                     --column-width: 52px;
+                    --github-repos-stars: var(--github-repos-stars-color, #bf8700);
                     --github-repos-issues: var(--github-repos-issues-color, #2da44e);
                     --github-repos-pulls: var(--github-repos-pulls-color, #8957e5);
                     --github-repos-unreleased: var(--github-repos-unreleased-color, var(--warning-color, #ff9800));
@@ -1683,6 +1696,10 @@ var GithubReposCard = class extends i4 {
 
                 .number.zero {
                     opacity: 0.6;
+                }
+
+                .number.stars {
+                    color: var(--github-repos-stars);
                 }
 
                 .number.issues {
