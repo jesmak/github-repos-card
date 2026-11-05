@@ -3,7 +3,7 @@
 Home Assistant dashboard card for the repositories the GitHub integration follows, with their versions, issues, pull
 requests and unreleased commits at a glance.
 
-[![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases] [![Marketplace][marketplace-shield]][marketplace] [![License][license-shield]](LICENSE)
+[![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases] [![Downloads][downloads-shield]][releases] [![Marketplace][marketplace-shield]][marketplace] [![License][license-shield]](LICENSE)
 
 <p>
 <img src="https://raw.githubusercontent.com/jesmak/github-repos-card/main/docs/images/folded-light.png#gh-light-mode-only" width="400" alt="Four repositories with something to do under their two owners' headers, two of them with commits after their latest release, and the four quiet ones folded into one line">
@@ -219,6 +219,7 @@ MIT, see [LICENSE](LICENSE).
 [releases-shield]: https://img.shields.io/github/release/jesmak/github-repos-card.svg?style=for-the-badge
 [release-date-shield]: https://img.shields.io/github/release-date/jesmak/github-repos-card?style=for-the-badge
 [releases]: https://github.com/jesmak/github-repos-card/releases
+[downloads-shield]: https://img.shields.io/github/downloads/jesmak/github-repos-card/total.svg?style=for-the-badge
 [marketplace-shield]: https://img.shields.io/badge/Marketplace-Default-green.svg?style=for-the-badge
 [marketplace]: https://my.home-assistant.io/redirect/marketplace_repository/?owner=jesmak&repository=github-repos-card&category=plugin
 [license-shield]: https://img.shields.io/github/license/jesmak/github-repos-card.svg?style=for-the-badge
