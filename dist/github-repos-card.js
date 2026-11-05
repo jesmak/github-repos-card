@@ -1283,8 +1283,9 @@ var GithubReposCard = class extends i4 {
   measureSoon() {
     cancelAnimationFrame(this.frame ?? 0);
     this.frame = requestAnimationFrame(() => {
-      this.measure();
-      this.fillRows();
+      if (this.measure()) {
+        this.fillRows();
+      }
     });
   }
   /**
@@ -1331,19 +1332,21 @@ var GithubReposCard = class extends i4 {
    * Every repo on one line when every one of them fits, its full name at its own width, the version and the numbers
    * beside it, and otherwise every repo on two, so the rows are all of a height. Measured at the widths the parts have on
    * one line, whichever layout is drawn, so the choice doesn't flip back and forth. A hidden card measures nothing.
+   * Returns false when the layout changed, as the one drawn is then about to be redrawn.
    */
   measure() {
     const card = this.renderRoot.querySelector("ha-card");
     const repos = [...this.renderRoot.querySelectorAll(".repo")];
     if (!card || !card.clientWidth) {
-      return;
+      return true;
     }
     const narrow = card.clientWidth < WHOLE_SECTION_PX;
-    if (narrow !== this.narrow) {
+    const changed = narrow !== this.narrow;
+    if (changed) {
       this.narrow = narrow;
     }
     if (!repos.length) {
-      return;
+      return !changed;
     }
     const style = getComputedStyle(repos[0]);
     const room = card.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
@@ -1368,7 +1371,9 @@ var GithubReposCard = class extends i4 {
     });
     if (fits !== this.oneLine) {
       this.oneLine = fits;
+      return false;
     }
+    return !changed;
   }
   /** The card's inline style: the height it is held to, or the rows it fills up to any limit, with their spare room under the title. */
   cardStyle() {
@@ -1516,6 +1521,8 @@ var GithubReposCard = class extends i4 {
                 /* A column, so that with a height of its own the title and the messages stay put and the list scrolls. */
                 ha-card {
                     box-sizing: border-box;
+                    /* ha-card's own transition covers every property, so each change in the rows the card fills would animate. Only the slide does. */
+                    transition: none;
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
