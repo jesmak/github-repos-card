@@ -155,12 +155,7 @@ describe("github-repos-card", () => {
     // drawn at `scale`, as a dialog opening draws the card.
     it.each<[string, number, number, string]>([
         ["under its limit, on the rows its content needs", 150, 1, "max-height: 568px; min-height: 184px; --github-repos-spare: 17px"],
-        [
-            "over its limit, on the limit rounded down to the rows",
-            900,
-            1,
-            "max-height: 568px; min-height: 568px; --github-repos-spare: 0px",
-        ],
+        ["over its limit, on the limit rounded down to the rows", 900, 1, "max-height: 568px; min-height: 568px"],
         ["a fraction of a pixel over a row, on the next one", 103.4, 1, "max-height: 568px; min-height: 184px; --github-repos-spare: 63px"],
         ["drawn scaled, in the layout's pixels", 199, 0.8, "max-height: 568px; min-height: 248px; --github-repos-spare: 32px"],
     ])("grows up to a limit on automatic rows %s", async (_name, bottom, scale, style) => {
@@ -170,6 +165,34 @@ describe("github-repos-card", () => {
         haCard.getBoundingClientRect = () => ({ top: 0, width: 454 * scale }) as DOMRect;
         const list = haCard.querySelector<HTMLElement>(".repos")!;
         (list.lastElementChild as HTMLElement).getBoundingClientRect = () => ({ bottom: bottom * scale }) as DOMRect;
+        vi.spyOn(window, "getComputedStyle").mockReturnValue({
+            paddingBottom: "16px",
+            borderBottomWidth: "1px",
+            marginBottom: "8px",
+            marginTop: "0px",
+            width: "454px",
+        } as CSSStyleDeclaration);
+        (element as unknown as { fillRows(): void }).fillRows();
+        vi.restoreAllMocks();
+        await element.updateComplete;
+        expect(haCard.getAttribute("style") ?? "").toBe(style);
+    });
+
+    // Held to 300 px, the room left over is spread as on filled rows while it is less than a row, and otherwise left under
+    // the repos. Without a title the repos are centred, half of it above them. A scrolled list counts at its whole length.
+    it.each<[string, Record<string, unknown>, number, number, string]>([
+        ["a little room under the title", { title: "Repos" }, 260, 0, "height: 300px; --github-repos-spare: 23px"],
+        ["a row or more under the repos", { title: "Repos" }, 200, 0, "height: 300px"],
+        ["a little room around the repos without a title", {}, 260, 0, "height: 300px; --github-repos-spare: 11px"],
+        ["nothing for a scrolled list longer than the card", { title: "Repos" }, 280, 100, "height: 300px"],
+    ])("held to a height, spreads %s", async (_name, config, bottom, scrolled, style) => {
+        const element = await card({ ...config, height_mode: "fixed", height: 300, grid_options: { rows: "auto" } }, HASS, "grid");
+        const haCard = element.shadowRoot!.querySelector<HTMLElement>("ha-card")!;
+        Object.defineProperty(haCard, "clientWidth", { value: 454, configurable: true });
+        haCard.getBoundingClientRect = () => ({ top: 0, width: 454, height: 300 }) as DOMRect;
+        const list = haCard.querySelector<HTMLElement>(".repos")!;
+        Object.defineProperty(list, "scrollTop", { value: scrolled, configurable: true });
+        (list.lastElementChild as HTMLElement).getBoundingClientRect = () => ({ bottom }) as DOMRect;
         vi.spyOn(window, "getComputedStyle").mockReturnValue({
             paddingBottom: "16px",
             borderBottomWidth: "1px",

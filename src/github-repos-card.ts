@@ -13,7 +13,7 @@ import "./editor";
 import { ScrollFade, fadeStyles } from "./fade";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows, heightCardSize, heightStyle, validHeight } from "./height";
-import { drawnScale, fillLimit, filledHeight, filledStyle, spareRoom, validRowStep } from "./rows";
+import { drawnScale, fillLimit, filledHeight, filledStyle, heldSpare, spareRoom, validRowStep } from "./rows";
 import { browserLanguage, translate } from "./localize/localize";
 import { byOwner, formatNumber, githubSensors, hasTodo, reposOf, selectRepos, shownNumbers } from "./repos";
 import type { GithubReposCardConfig, Repo } from "./types";
@@ -61,7 +61,10 @@ export class GithubReposCard extends LitElement {
     @state() private sliding = false;
     /** In a sections view with rows left automatic: the whole rows that hold the content, in pixels. */
     @state() private filled = 0;
-    /** The room a whole row leaves over, put under the title rather than under the repos. */
+    /**
+     * The room a whole row leaves over, or a held card's when it is less than a row, put under the title rather than
+     * under the repos, or split above and below them without a title.
+     */
     @state() private spare = 0;
     private slideTimer?: number;
     /** Whether any shown repo has a version, so one without keeps the version's place on one line. */
@@ -194,32 +197,42 @@ export class GithubReposCard extends LitElement {
      * the 8 px gaps between them), or the half rows with `row_step: half`, so the cards under it stay on the rows, up to
      * the limit of a card that grows up to one. Each
      * part is a step of half a row, so this matters only when they add up to a half: a title and an odd number of repos
-     * on one line, no title, or a message. The half row left over goes under the title, not under the repos, and is
-     * measured out of the content again each time.
+     * on one line, no title, or a message. The half row left over goes under the title, not under the repos, or without
+     * a title is split above and below them, and is measured out of the content again each time. A card held to a height
+     * that leaves less than a row over its content spreads that room the same way.
      */
     private fillRows(): void {
         const card = this.renderRoot.querySelector<HTMLElement>("ha-card");
         const list = this.renderRoot.querySelector<HTMLElement>(".repos");
         const limit = fillLimit(this.config ?? {}, this.layout, this.minimumHeight());
-        if (!card || !list || !card.clientWidth || !limit) {
+        const held = !limit && Boolean(this.heightStyle());
+        if (!card || !list || !card.clientWidth || (!limit && !held)) {
             if (this.filled) this.filled = 0;
             if (this.spare) this.spare = 0;
             return;
         }
-        // Measured to the content's own end, as the list grows to whatever height the card is given, and to where the
-        // quiet repos' slide ends rather than where it is, so the card is on its rows the moment the slide begins.
-        // Drawn sizes are unscaled, as the padding, border and the slide's scroll height added to them are the layout's.
+        // Measured to the content's own end, as the list grows to whatever height the card is given, however far it is
+        // scrolled, and to where the quiet repos' slide ends rather than where it is, so the card is on its rows the
+        // moment the slide begins. Drawn sizes are unscaled, as the padding, border and the scroll heights added to them
+        // are the layout's.
         const last = list.lastElementChild ?? list;
         const scale = drawnScale(card);
         const style = getComputedStyle(card);
         let content =
             (last.getBoundingClientRect()[last === list ? "top" : "bottom"] - card.getBoundingClientRect().top) / scale +
+            list.scrollTop +
             (parseFloat(style.paddingBottom) || 0) +
             (parseFloat(style.borderBottomWidth) || 0) -
             this.spareShown(card);
         const slide = list.querySelector<HTMLElement>(".slide");
         if (slide) {
             content += (this.open ? (slide.firstElementChild?.scrollHeight ?? 0) : 0) - slide.getBoundingClientRect().height / scale;
+        }
+        if (held) {
+            const spare = heldSpare(card.getBoundingClientRect().height / scale, content);
+            if (this.filled) this.filled = 0;
+            if (spare !== this.spare) this.spare = spare;
+            return;
         }
         const filled = filledHeight(content, this.config ?? {}, limit);
         const spare = spareRoom(filled, content);
@@ -299,10 +312,17 @@ export class GithubReposCard extends LitElement {
         return !changed;
     }
 
-    /** The card's inline style: the height it is held to, or the rows it fills up to any limit, with their spare room under the title. */
+    /**
+     * The card's inline style: the height it is held to, or the rows it fills up to any limit, with their spare room under
+     * the title, or without one the upper half of it, as the repos are centred.
+     */
     private cardStyle(): string {
         const style = filledStyle(this.config ?? {}, this.layout, this.minimumHeight(), this.filled);
-        return this.filled ? `${style}; --github-repos-spare: ${this.spare}px` : style;
+        if (!this.spare) {
+            return style;
+        }
+        const top = this.config?.title ? this.spare : Math.floor(this.spare / 2);
+        return [style, `--github-repos-spare: ${top}px`].filter(Boolean).join("; ");
     }
 
     private heightStyle(): string {
@@ -514,7 +534,7 @@ export class GithubReposCard extends LitElement {
                  * whole rows: the padding and the title take 56 px (24 without a title), a repo on two lines and the fold
                  * 64, and on one line 32.
                  */
-                /* The room a whole row leaves over goes under the title, or at the top without one. */
+                /* The room left over goes under the title, or without one its upper half goes above the repos. */
                 .card-title {
                     margin: 0 16px calc(8px + var(--github-repos-spare, 0px));
                     font-size: var(--ha-card-header-font-size, 24px);

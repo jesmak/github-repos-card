@@ -671,6 +671,10 @@ function filledHeight(content, config, limit = Infinity) {
 function spareRoom(filled, content) {
   return Math.max(0, Math.floor(filled - content + SLACK_PX));
 }
+function heldSpare(held, content) {
+  const spare = spareRoom(held, content);
+  return spare < ROW_PX ? spare : 0;
+}
 function fillLimit(config, layout, minimum = 0) {
   const rows = config.grid_options ? config.grid_options.rows : config.layout_options?.grid_rows;
   if (layout !== "grid" || typeof rows === "number") {
@@ -1303,14 +1307,16 @@ var GithubReposCard = class extends i4 {
    * the 8 px gaps between them), or the half rows with `row_step: half`, so the cards under it stay on the rows, up to
    * the limit of a card that grows up to one. Each
    * part is a step of half a row, so this matters only when they add up to a half: a title and an odd number of repos
-   * on one line, no title, or a message. The half row left over goes under the title, not under the repos, and is
-   * measured out of the content again each time.
+   * on one line, no title, or a message. The half row left over goes under the title, not under the repos, or without
+   * a title is split above and below them, and is measured out of the content again each time. A card held to a height
+   * that leaves less than a row over its content spreads that room the same way.
    */
   fillRows() {
     const card = this.renderRoot.querySelector("ha-card");
     const list = this.renderRoot.querySelector(".repos");
     const limit = fillLimit(this.config ?? {}, this.layout, this.minimumHeight());
-    if (!card || !list || !card.clientWidth || !limit) {
+    const held = !limit && Boolean(this.heightStyle());
+    if (!card || !list || !card.clientWidth || !limit && !held) {
       if (this.filled) this.filled = 0;
       if (this.spare) this.spare = 0;
       return;
@@ -1318,10 +1324,16 @@ var GithubReposCard = class extends i4 {
     const last = list.lastElementChild ?? list;
     const scale = drawnScale(card);
     const style = getComputedStyle(card);
-    let content = (last.getBoundingClientRect()[last === list ? "top" : "bottom"] - card.getBoundingClientRect().top) / scale + (parseFloat(style.paddingBottom) || 0) + (parseFloat(style.borderBottomWidth) || 0) - this.spareShown(card);
+    let content = (last.getBoundingClientRect()[last === list ? "top" : "bottom"] - card.getBoundingClientRect().top) / scale + list.scrollTop + (parseFloat(style.paddingBottom) || 0) + (parseFloat(style.borderBottomWidth) || 0) - this.spareShown(card);
     const slide = list.querySelector(".slide");
     if (slide) {
       content += (this.open ? slide.firstElementChild?.scrollHeight ?? 0 : 0) - slide.getBoundingClientRect().height / scale;
+    }
+    if (held) {
+      const spare2 = heldSpare(card.getBoundingClientRect().height / scale, content);
+      if (this.filled) this.filled = 0;
+      if (spare2 !== this.spare) this.spare = spare2;
+      return;
     }
     const filled = filledHeight(content, this.config ?? {}, limit);
     const spare = spareRoom(filled, content);
@@ -1387,10 +1399,17 @@ var GithubReposCard = class extends i4 {
     }
     return !changed;
   }
-  /** The card's inline style: the height it is held to, or the rows it fills up to any limit, with their spare room under the title. */
+  /**
+   * The card's inline style: the height it is held to, or the rows it fills up to any limit, with their spare room under
+   * the title, or without one the upper half of it, as the repos are centred.
+   */
   cardStyle() {
     const style = filledStyle(this.config ?? {}, this.layout, this.minimumHeight(), this.filled);
-    return this.filled ? `${style}; --github-repos-spare: ${this.spare}px` : style;
+    if (!this.spare) {
+      return style;
+    }
+    const top = this.config?.title ? this.spare : Math.floor(this.spare / 2);
+    return [style, `--github-repos-spare: ${top}px`].filter(Boolean).join("; ");
   }
   heightStyle() {
     return heightStyle(this.config ?? {}, this.layout, this.minimumHeight());
@@ -1565,7 +1584,7 @@ var GithubReposCard = class extends i4 {
                  * whole rows: the padding and the title take 56 px (24 without a title), a repo on two lines and the fold
                  * 64, and on one line 32.
                  */
-                /* The room a whole row leaves over goes under the title, or at the top without one. */
+                /* The room left over goes under the title, or without one its upper half goes above the repos. */
                 .card-title {
                     margin: 0 16px calc(8px + var(--github-repos-spare, 0px));
                     font-size: var(--ha-card-header-font-size, 24px);
