@@ -1,13 +1,15 @@
 /**
  * The card's visual editor: the title, which repos, which numbers, folding and what counts as something to do, what a
- * tap does, the language and how the card rounds its height to the rows of a sections view. Its height mode is set in
- * YAML only. Home Assistant's own form draws it, so the card bundles no form components.
+ * tap does, the language, how the card rounds its height to the rows of a sections view, and how a list that scrolls
+ * shows that there is more. Its height mode is set in YAML only. Home Assistant's own form draws it, so the card
+ * bundles no form components.
  */
 import { LitElement, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
-import { DEFAULT_TAP, NUMBERS, TODOS } from "./const";
+import { DEFAULT_SCROLL_INDICATOR, DEFAULT_TAP, NUMBERS, TODOS } from "./const";
+import { scrollIndicatorData, scrollIndicatorSchema, tidyScrollIndicator } from "./fade";
 import type { HomeAssistant } from "./hass";
 import { rowStepData, rowStepSchema, tidyRowStep } from "./rows";
 import { LANGUAGE_CODES, browserLanguage, translate } from "./localize/localize";
@@ -68,6 +70,7 @@ function schema(hass: HomeAssistant, config: GithubReposCardConfig, language: st
             },
         },
         ...rowStepSchema(config, text),
+        ...scrollIndicatorSchema(text),
     ];
 }
 
@@ -87,7 +90,7 @@ export class GithubReposCardEditor extends LitElement {
         return html`
             <ha-form
                 .hass=${this.hass}
-                .data=${{ ...DEFAULTS, ...rowStepData(this.config) }}
+                .data=${{ ...DEFAULTS, ...scrollIndicatorData(rowStepData(this.config), DEFAULT_SCROLL_INDICATOR) }}
                 .schema=${schema(this.hass, this.config, this.language(), (key) => this.text(key))}
                 .computeLabel=${(entry: SchemaEntry) => this.text(`editor.${entry.name}`)}
                 .computeHelper=${(entry: SchemaEntry) => this.helper(entry.name)}
@@ -97,7 +100,7 @@ export class GithubReposCardEditor extends LitElement {
     }
 
     private valueChanged(event: CustomEvent<{ value: GithubReposCardConfig }>): void {
-        const config: GithubReposCardConfig = tidyRowStep(event.detail.value);
+        const config: GithubReposCardConfig = tidyScrollIndicator(tidyRowStep(event.detail.value), DEFAULT_SCROLL_INDICATOR);
         // The defaults are shown in the form but left out of the configuration, as are empty texts and lists.
         for (const key of Object.keys(config)) {
             const value = config[key];

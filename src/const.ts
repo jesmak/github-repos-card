@@ -1,3 +1,5 @@
+import type { ScrollIndicator } from "./fade";
+
 /** Replaced at build time with the version in package.json. */
 declare const __CARD_VERSION__: string;
 
@@ -21,3 +23,6 @@ export type NumberKey = (typeof NUMBERS)[number]["key"];
 export const TODOS = ["todo_issues", "todo_pull_requests", "todo_unreleased"] as const;
 
 export const DEFAULT_TAP = "github";
+
+/** A held card's list shows both its fading edges and a thin scrollbar. */
+export const DEFAULT_SCROLL_INDICATOR: ScrollIndicator = "both";

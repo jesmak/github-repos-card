@@ -26,9 +26,13 @@ describe("the card's editor", () => {
             todo_unreleased: true,
             tap: "github",
             row_step: "full",
+            scroll_indicator: "both",
         };
-        editor.shadowRoot!.querySelector("ha-form")!.dispatchEvent(new CustomEvent("value-changed", { detail: { value } }));
+        const form = editor.shadowRoot!.querySelector("ha-form")!;
+        form.dispatchEvent(new CustomEvent("value-changed", { detail: { value } }));
         expect(saved).toEqual({ type: "custom:github-repos-card", height: 300, show_stars: false });
+        form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...value, scroll_indicator: "fade" } } }));
+        expect(saved).toEqual({ type: "custom:github-repos-card", height: 300, show_stars: false, scroll_indicator: "fade" });
         editor.remove();
     });
 });
