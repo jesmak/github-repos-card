@@ -101,6 +101,7 @@ export class GithubReposCard extends LitElement {
         const lists = [config?.repos, config?.exclude];
         if (
             !config ||
+            (config.unreleased_entity !== undefined && typeof config.unreleased_entity !== "string") ||
             lists.some((list) => list !== undefined && (!Array.isArray(list) || list.some((name) => typeof name !== "string")))
         ) {
             throw new Error(translate(browserLanguage(), "common.invalid_configuration"));
@@ -120,7 +121,7 @@ export class GithubReposCard extends LitElement {
     public getCardSize(): number {
         return heightCardSize(
             this.config ?? {},
-            1 + (this.hass && this.config ? selectRepos(reposOf(this.hass), this.config).shown.length : 3),
+            1 + (this.hass && this.config ? selectRepos(reposOf(this.hass, this.config.unreleased_entity), this.config).shown.length : 3),
             this.minimumHeight(),
         );
     }
@@ -350,14 +351,15 @@ export class GithubReposCard extends LitElement {
             this.sensorsOf = this.hass.entities;
             this.sensors = [...githubSensors(this.hass).values()].flatMap((keys) => [...keys.values()]);
         }
-        return this.sensors.some((entity) => previous.states[entity] !== this.hass?.states[entity]);
+        const watched = this.config?.unreleased_entity ? [...this.sensors, this.config.unreleased_entity] : this.sensors;
+        return watched.some((entity) => previous.states[entity] !== this.hass?.states[entity]);
     }
 
     protected render(): TemplateResult | typeof nothing {
         if (!this.hass || !this.config) {
             return nothing;
         }
-        const followed = reposOf(this.hass);
+        const followed = reposOf(this.hass, this.config.unreleased_entity);
         const { shown, missing } = selectRepos(followed, this.config);
         const config = this.config;
         // Nothing followed is something to set up. Everything filtered out is the card's own options at work.

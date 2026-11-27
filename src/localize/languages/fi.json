@@ -47,6 +47,8 @@
         "todo_issues": "Avoin seikka on tehtävä",
         "todo_pull_requests": "Avoin vetopyyntö on tehtävä",
         "todo_unreleased": "Muutokset viimeisimmän julkaisun jälkeen ovat tehtävä",
+        "unreleased_entity": "Julkaisemattomien muutosten sensori",
+        "unreleased_entity_helper": "Repoille, joiden oletushaara liikkuu vain julkaisun yhteydessä.",
         "tap": "Napautus",
         "tap_github": "Avaa repo GitHubissa",
         "tap_more_info": "Näytä lisätiedot",

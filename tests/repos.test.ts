@@ -86,6 +86,48 @@ describe("hasUnreleased", () => {
     });
 });
 
+describe("a sensor of unreleased work", () => {
+    const node = (nameWithOwner: string, aheadBy?: number) => ({
+        nameWithOwner,
+        defaultBranchRef: { compare: aheadBy === undefined ? null : { aheadBy } },
+    });
+    const withSensor = (nodes: unknown, state: string) => ({
+        ...HASS,
+        states: {
+            ...HASS.states,
+            "sensor.unreleased": { entity_id: "sensor.unreleased", state, last_changed: "", attributes: { nodes } },
+        },
+    });
+    const unreleased = (nodes: unknown, state = "1") =>
+        Object.fromEntries(reposOf(withSensor(nodes, state), "sensor.unreleased").map((repo) => [repo.fullName, repo.unreleased]));
+
+    it("decides for the repos it compares, whatever the case of their names, and leaves the others to the tag", () => {
+        const nodes = [
+            node("Matti/Sauna_Sensor", 3),
+            node("example-org/aurora-card", 0),
+            node("matti/aurora-card"),
+            node("matti/heating", 5),
+        ];
+        // Heating has no release, so it has no version to colour, however far ahead its branch is.
+        expect(unreleased(nodes)).toEqual({
+            "matti/sauna_sensor": true,
+            "example-org/Aurora-card": false,
+            "matti/heating": false,
+            "matti/aurora-card": false,
+        });
+    });
+
+    it("leaves every repo to the tag when it has no list or no number, is unavailable or isn't there", () => {
+        const byTag = Object.fromEntries(reposOf(HASS).map((repo) => [repo.fullName, repo.unreleased]));
+        expect(unreleased(undefined)).toEqual(byTag);
+        expect(unreleased([null, "x", { nameWithOwner: "matti/sauna_sensor", defaultBranchRef: null }])).toEqual(byTag);
+        expect(unreleased("x")).toEqual(byTag);
+        expect(unreleased([{ nameWithOwner: "matti/sauna_sensor", defaultBranchRef: { compare: { aheadBy: "3" } } }])).toEqual(byTag);
+        expect(unreleased([node("matti/sauna_sensor", 3)], "unavailable")).toEqual(byTag);
+        expect(Object.fromEntries(reposOf(HASS, "sensor.missing").map((repo) => [repo.fullName, repo.unreleased]))).toEqual(byTag);
+    });
+});
+
 describe("selectRepos", () => {
     const repos = reposOf(HASS);
 

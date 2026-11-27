@@ -28,9 +28,13 @@ export function githubSensors(hass: HomeAssistant): Map<string, Map<string, stri
     return devices;
 }
 
-/** Every repo the GitHub integration follows, alphabetical by its name. */
-export function reposOf(hass: HomeAssistant): Repo[] {
+/**
+ * Every repo the GitHub integration follows, alphabetical by its name. A repo the given entity lists with a branch of
+ * unreleased work takes its unreleased commits from there, the others from the integration's own sensors.
+ */
+export function reposOf(hass: HomeAssistant, unreleasedEntity?: string): Repo[] {
     const repos: Repo[] = [];
+    const ahead = commitsAhead(known(hass.states[unreleasedEntity ?? ""]));
     for (const [deviceId, keys] of githubSensors(hass)) {
         const match = FULL_NAME.exec(hass.devices?.[deviceId]?.name ?? "");
         if (!match) {
@@ -49,13 +53,14 @@ export function reposOf(hass: HomeAssistant): Repo[] {
 
         const release = state("latest_release");
         const version = typeof release?.attributes.tag === "string" ? release.attributes.tag : undefined;
+        const commits = ahead.get(key(fullName));
         repos.push({
             owner,
             name,
             fullName,
             url: `https://github.com/${fullName}`,
             version,
-            unreleased: !!version && hasUnreleased(state("latest_tag"), state("latest_commit")),
+            unreleased: !!version && (commits !== undefined ? commits > 0 : hasUnreleased(state("latest_tag"), state("latest_commit"))),
             numbers,
             // A repo with no release would open on a sensor that only says it is unavailable.
             entity: (release ? keys.get("latest_release") : undefined) ?? keys.get("latest_commit") ?? [...keys.values()][0],
@@ -75,6 +80,30 @@ export function hasUnreleased(tag: HassEntity | undefined, commit: HassEntity | 
     return !!tagCommit && typeof head === "string" && tagCommit.toLowerCase() !== head.toLowerCase();
 }
 
+/**
+ * How many commits each repo's branch of unreleased work is ahead of its default branch, by the repo's full name in
+ * lower case. The entity's `nodes` attribute is GitHub's GraphQL answer as it came: a repo without that branch has no
+ * comparison there, and is left out.
+ */
+export function commitsAhead(entity: HassEntity | undefined): Map<string, number> {
+    const ahead = new Map<string, number>();
+    const nodes: unknown = entity?.attributes.nodes;
+    for (const node of Array.isArray(nodes) ? (nodes as GraphqlRepo[]) : []) {
+        const commits = node?.defaultBranchRef?.compare?.aheadBy;
+        if (typeof node?.nameWithOwner === "string" && typeof commits === "number") {
+            ahead.set(key(node.nameWithOwner), commits);
+        }
+    }
+    return ahead;
+}
+
+interface GraphqlRepo {
+    nameWithOwner?: unknown;
+    defaultBranchRef?: { compare?: { aheadBy?: unknown } | null } | null;
+}
+
+const key = (name: string) => name.trim().toLowerCase();
+
 const compare = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base", numeric: true });
 
 /** Alphabetical by the repo's name, whatever its owner. */
@@ -86,8 +115,8 @@ function sortRepos(repos: Repo[]): Repo[] {
 export function byOwner(repos: Repo[]): { owner: string; repos: Repo[] }[] {
     const groups = new Map<string, Repo[]>();
     for (const repo of repos) {
-        const key = repo.owner.toLowerCase();
-        groups.set(key, [...(groups.get(key) ?? []), repo]);
+        const owner = repo.owner.toLowerCase();
+        groups.set(owner, [...(groups.get(owner) ?? []), repo]);
     }
     return [...groups.values()].map((group) => ({ owner: group[0].owner, repos: group })).sort((a, b) => compare(a.owner, b.owner));
 }
@@ -97,7 +126,6 @@ export function byOwner(repos: Repo[]): { owner: string; repos: Repo[] }[] {
  * followed is returned as missing, so the card can say so rather than leave it out without a word.
  */
 export function selectRepos(repos: Repo[], config: GithubReposCardConfig): { shown: Repo[]; missing: string[] } {
-    const key = (name: string) => name.trim().toLowerCase();
     const excluded = new Set((config.exclude ?? []).map(key));
     let shown = repos;
     let missing: string[] = [];

@@ -21,6 +21,8 @@ export interface GithubReposCardConfig extends LovelaceCardConfig, RowStepConfig
     todo_issues?: boolean;
     todo_pull_requests?: boolean;
     todo_unreleased?: boolean;
+    /** A sensor that knows the repos' branches of unreleased work, for repos whose default branch only moves at a release. */
+    unreleased_entity?: string;
     tap?: "github" | "more_info";
     /** The card's own language, in place of Home Assistant's. */
     language?: string;
@@ -35,7 +37,7 @@ export interface Repo {
     url: string;
     /** The latest release's tag, none when the repo has no release. */
     version?: string;
-    /** Main has commits after the newest tag. */
+    /** The repo has commits after its release: on the default branch after the newest tag, or on its branch of unreleased work. */
     unreleased: boolean;
     /** A number is missing when its sensor is unavailable or disabled. */
     numbers: Partial<Record<NumberKey, number>>;

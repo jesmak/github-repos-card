@@ -47,6 +47,8 @@
         "todo_issues": "An open issue is something to do",
         "todo_pull_requests": "An open pull request is something to do",
         "todo_unreleased": "Commits after the latest release are something to do",
+        "unreleased_entity": "Sensor of unreleased work",
+        "unreleased_entity_helper": "For repositories whose default branch only moves at a release.",
         "tap": "Tap",
         "tap_github": "Open the repository on GitHub",
         "tap_more_info": "Show more info",

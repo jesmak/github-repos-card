@@ -1,12 +1,12 @@
 /*! github-repos-card 1.2.0 | MIT License */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __decorateClass = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc(target, key) : target;
+var __decorateClass = (decorators, target, key2, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc(target, key2) : target;
   for (var i5 = decorators.length - 1, decorator; i5 >= 0; i5--)
     if (decorator = decorators[i5])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp(target, key, result);
+      result = (kind ? decorator(target, key2, result) : decorator(result)) || result;
+  if (kind && result) __defProp(target, key2, result);
   return result;
 };
 
@@ -912,6 +912,8 @@ var en_default = {
     todo_issues: "An open issue is something to do",
     todo_pull_requests: "An open pull request is something to do",
     todo_unreleased: "Commits after the latest release are something to do",
+    unreleased_entity: "Sensor of unreleased work",
+    unreleased_entity_helper: "For repositories whose default branch only moves at a release.",
     tap: "Tap",
     tap_github: "Open the repository on GitHub",
     tap_more_info: "Show more info",
@@ -979,6 +981,8 @@ var fi_default = {
     todo_issues: "Avoin seikka on teht\xE4v\xE4",
     todo_pull_requests: "Avoin vetopyynt\xF6 on teht\xE4v\xE4",
     todo_unreleased: "Muutokset viimeisimm\xE4n julkaisun j\xE4lkeen ovat teht\xE4v\xE4",
+    unreleased_entity: "Julkaisemattomien muutosten sensori",
+    unreleased_entity_helper: "Repoille, joiden oletushaara liikkuu vain julkaisun yhteydess\xE4.",
     tap: "Napautus",
     tap_github: "Avaa repo GitHubissa",
     tap_more_info: "N\xE4yt\xE4 lis\xE4tiedot",
@@ -1002,23 +1006,23 @@ var LANGUAGES = Object.fromEntries(
   Object.entries(FILES).map(([path, table]) => [path.replace(/^.*\/|\.json$/g, "").toLowerCase(), table])
 );
 var LANGUAGE_CODES = Object.keys(LANGUAGES).sort();
-function translate(language, key) {
+function translate(language, key2) {
   for (const code of languageCodes(language)) {
-    const text = read(LANGUAGES[code], key);
+    const text = read(LANGUAGES[code], key2);
     if (text !== void 0) {
       return text;
     }
   }
-  return read(LANGUAGES.en, key) ?? key;
+  return read(LANGUAGES.en, key2) ?? key2;
 }
 function languageCodes(language) {
   const tag = (language ?? "en").trim().toLowerCase().replace(/_/g, "-");
   const base = tag.split("-")[0];
   return tag === base ? [base] : [tag, base];
 }
-function read(table, key) {
+function read(table, key2) {
   let value = table;
-  for (const part of key.split(".")) {
+  for (const part of key2.split(".")) {
     if (value === null || typeof value !== "object") {
       return void 0;
     }
@@ -1045,31 +1049,33 @@ function githubSensors(hass) {
   }
   return devices;
 }
-function reposOf(hass) {
+function reposOf(hass, unreleasedEntity) {
   const repos = [];
+  const ahead = commitsAhead(known(hass.states[unreleasedEntity ?? ""]));
   for (const [deviceId, keys] of githubSensors(hass)) {
     const match = FULL_NAME.exec(hass.devices?.[deviceId]?.name ?? "");
     if (!match) {
       continue;
     }
     const [fullName, owner, name] = match;
-    const state = (key) => known(hass.states[keys.get(key) ?? ""]);
+    const state = (key2) => known(hass.states[keys.get(key2) ?? ""]);
     const numbers = {};
-    for (const { key } of NUMBERS) {
-      const value = Number(state(key)?.state);
-      if (state(key) && Number.isFinite(value)) {
-        numbers[key] = value;
+    for (const { key: key2 } of NUMBERS) {
+      const value = Number(state(key2)?.state);
+      if (state(key2) && Number.isFinite(value)) {
+        numbers[key2] = value;
       }
     }
     const release = state("latest_release");
     const version = typeof release?.attributes.tag === "string" ? release.attributes.tag : void 0;
+    const commits = ahead.get(key(fullName));
     repos.push({
       owner,
       name,
       fullName,
       url: `https://github.com/${fullName}`,
       version,
-      unreleased: !!version && hasUnreleased(state("latest_tag"), state("latest_commit")),
+      unreleased: !!version && (commits !== void 0 ? commits > 0 : hasUnreleased(state("latest_tag"), state("latest_commit"))),
       numbers,
       // A repo with no release would open on a sensor that only says it is unavailable.
       entity: (release ? keys.get("latest_release") : void 0) ?? keys.get("latest_commit") ?? [...keys.values()][0]
@@ -1082,6 +1088,18 @@ function hasUnreleased(tag, commit) {
   const head = commit?.attributes.sha;
   return !!tagCommit && typeof head === "string" && tagCommit.toLowerCase() !== head.toLowerCase();
 }
+function commitsAhead(entity) {
+  const ahead = /* @__PURE__ */ new Map();
+  const nodes = entity?.attributes.nodes;
+  for (const node of Array.isArray(nodes) ? nodes : []) {
+    const commits = node?.defaultBranchRef?.compare?.aheadBy;
+    if (typeof node?.nameWithOwner === "string" && typeof commits === "number") {
+      ahead.set(key(node.nameWithOwner), commits);
+    }
+  }
+  return ahead;
+}
+var key = (name) => name.trim().toLowerCase();
 var compare = (a3, b3) => a3.localeCompare(b3, "en", { sensitivity: "base", numeric: true });
 function sortRepos(repos) {
   return [...repos].sort((a3, b3) => compare(a3.name, b3.name) || compare(a3.owner, b3.owner));
@@ -1089,13 +1107,12 @@ function sortRepos(repos) {
 function byOwner(repos) {
   const groups = /* @__PURE__ */ new Map();
   for (const repo of repos) {
-    const key = repo.owner.toLowerCase();
-    groups.set(key, [...groups.get(key) ?? [], repo]);
+    const owner = repo.owner.toLowerCase();
+    groups.set(owner, [...groups.get(owner) ?? [], repo]);
   }
   return [...groups.values()].map((group) => ({ owner: group[0].owner, repos: group })).sort((a3, b3) => compare(a3.owner, b3.owner));
 }
 function selectRepos(repos, config) {
-  const key = (name) => name.trim().toLowerCase();
   const excluded = new Set((config.exclude ?? []).map(key));
   let shown = repos;
   let missing = [];
@@ -1157,6 +1174,7 @@ function schema(hass, config, language, text) {
       schema: [{ type: "grid", name: "", schema: booleans(NUMBERS.map(({ option }) => option)) }]
     },
     { type: "expandable", name: "folding", flatten: true, schema: booleans(["fold_quiet", ...TODOS]) },
+    { name: "unreleased_entity", selector: { entity: { domain: "sensor" } } },
     {
       name: "tap",
       selector: {
@@ -1195,7 +1213,7 @@ var GithubReposCardEditor = class extends i4 {
             <ha-form
                 .hass=${this.hass}
                 .data=${{ ...DEFAULTS, ...scrollIndicatorData(rowStepData(this.config), DEFAULT_SCROLL_INDICATOR) }}
-                .schema=${schema(this.hass, this.config, this.language(), (key) => this.text(key))}
+                .schema=${schema(this.hass, this.config, this.language(), (key2) => this.text(key2))}
                 .computeLabel=${(entry) => this.text(`editor.${entry.name}`)}
                 .computeHelper=${(entry) => this.helper(entry.name)}
                 @value-changed=${this.valueChanged}
@@ -1204,21 +1222,21 @@ var GithubReposCardEditor = class extends i4 {
   }
   valueChanged(event) {
     const config = tidyScrollIndicator(tidyRowStep(event.detail.value), DEFAULT_SCROLL_INDICATOR);
-    for (const key of Object.keys(config)) {
-      const value = config[key];
-      if (value === DEFAULTS[key] || value === void 0 || value === null || value === "" || Array.isArray(value) && !value.length) {
-        delete config[key];
+    for (const key2 of Object.keys(config)) {
+      const value = config[key2];
+      if (value === DEFAULTS[key2] || value === void 0 || value === null || value === "" || Array.isArray(value) && !value.length) {
+        delete config[key2];
       }
     }
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
   }
-  text(key) {
-    return translate(this.language(), key);
+  text(key2) {
+    return translate(this.language(), key2);
   }
   helper(name) {
-    const key = `editor.${name}_helper`;
-    const helper = translate(this.language(), key);
-    return helper === key ? void 0 : helper;
+    const key2 = `editor.${name}_helper`;
+    const helper = translate(this.language(), key2);
+    return helper === key2 ? void 0 : helper;
   }
   language() {
     return this.hass?.locale?.language ?? this.hass?.language ?? browserLanguage();
@@ -1294,7 +1312,7 @@ var GithubReposCard = class extends i4 {
   }
   setConfig(config) {
     const lists = [config?.repos, config?.exclude];
-    if (!config || lists.some((list) => list !== void 0 && (!Array.isArray(list) || list.some((name) => typeof name !== "string")))) {
+    if (!config || config.unreleased_entity !== void 0 && typeof config.unreleased_entity !== "string" || lists.some((list) => list !== void 0 && (!Array.isArray(list) || list.some((name) => typeof name !== "string")))) {
       throw new Error(translate(browserLanguage(), "common.invalid_configuration"));
     }
     if (!validHeight(config)) {
@@ -1311,7 +1329,7 @@ var GithubReposCard = class extends i4 {
   getCardSize() {
     return heightCardSize(
       this.config ?? {},
-      1 + (this.hass && this.config ? selectRepos(reposOf(this.hass), this.config).shown.length : 3),
+      1 + (this.hass && this.config ? selectRepos(reposOf(this.hass, this.config.unreleased_entity), this.config).shown.length : 3),
       this.minimumHeight()
     );
   }
@@ -1499,13 +1517,14 @@ var GithubReposCard = class extends i4 {
       this.sensorsOf = this.hass.entities;
       this.sensors = [...githubSensors(this.hass).values()].flatMap((keys) => [...keys.values()]);
     }
-    return this.sensors.some((entity) => previous.states[entity] !== this.hass?.states[entity]);
+    const watched = this.config?.unreleased_entity ? [...this.sensors, this.config.unreleased_entity] : this.sensors;
+    return watched.some((entity) => previous.states[entity] !== this.hass?.states[entity]);
   }
   render() {
     if (!this.hass || !this.config) {
       return A;
     }
-    const followed = reposOf(this.hass);
+    const followed = reposOf(this.hass, this.config.unreleased_entity);
     const { shown, missing } = selectRepos(followed, this.config);
     const config = this.config;
     const empty = shown.length || missing.length ? void 0 : followed.length ? "common.none_shown" : "common.no_repos";
@@ -1605,16 +1624,16 @@ var GithubReposCard = class extends i4 {
    */
   columns(repos) {
     const language = this.language();
-    return shownNumbers(this.config ?? { type: "" }).map(({ key, icon }) => {
-      return { key, icon, chars: Math.max(1, ...repos.map((repo) => formatNumber(repo.numbers[key] ?? 0, language).length)) };
+    return shownNumbers(this.config ?? { type: "" }).map(({ key: key2, icon }) => {
+      return { key: key2, icon, chars: Math.max(1, ...repos.map((repo) => formatNumber(repo.numbers[key2] ?? 0, language).length)) };
     });
   }
   moreInfo(entityId) {
     this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId }, bubbles: true, composed: true }));
   }
   /** A text in the card's language, with `{name}` in it replaced, so a translation can put the value where it reads right. */
-  text(key, values = {}) {
-    return translate(this.language(), key).replace(/\{(\w+)\}/g, (match, name) => values[name] ?? match);
+  text(key2, values = {}) {
+    return translate(this.language(), key2).replace(/\{(\w+)\}/g, (match, name) => values[name] ?? match);
   }
   language() {
     return this.config?.language || this.hass?.locale?.language || this.hass?.language || browserLanguage();

@@ -64,6 +64,7 @@ The card needs the GitHub integration, set up with the repositories you want to 
 | `todo_issues`               | boolean | An open issue is something to do                                                                                                                                                                                                                                                                                                                              | `true`                                                                          |
 | `todo_pull_requests`        | boolean | An open pull request is something to do                                                                                                                                                                                                                                                                                                                       | `true`                                                                          |
 | `todo_unreleased`           | boolean | Commits after the latest release are something to do                                                                                                                                                                                                                                                                                                          | `true`                                                                          |
+| `unreleased_entity`         | string  | A sensor that tells which repositories have unreleased commits on a development branch, [described below](#unreleased-work-on-a-development-branch)                                                                                                                                                                                                           |                                                                                 |
 | `tap`                       | string  | What a tap on a repository does, `github` to open it on GitHub or `more_info`                                                                                                                                                                                                                                                                                 | `github`                                                                        |
 | `language`                  | string  | The card's language, `en` or `fi`                                                                                                                                                                                                                                                                                                                             | Home Assistant's                                                                |
 | `height_mode`               | string  | How tall the card is. `auto` fits its content, `fixed` keeps it at `height`, `max` lets it grow up to `max_height`. In `fixed` and `max` the title and the messages stay in view and the list scrolls, and the card never gets lower than the title and one repository need. A height in grid rows, set in the layout tab of a sections view, is used instead | `fixed` when `height` is set, `max` when only `max_height` is, otherwise `auto` |
@@ -87,6 +88,8 @@ The version is the latest release's tag. It turns orange when the default branch
 The GitHub integration gives the commit of the newest tag only, not of the latest release, so a repository that tags
 without releasing is compared with its newest tag. The newest tag can be on any branch, so in a repository whose
 newest tag is on a maintenance or beta branch the version stays orange. A repository with no release shows no version.
+A repository whose default branch only moves at a release never turns orange this way, and needs
+[a sensor of its own](#unreleased-work-on-a-development-branch).
 
 Open issues are green and open pull requests purple when there are some. A number that is zero or missing is dimmed.
 A number whose sensor is disabled or unavailable shows as a dash. Numbers of a thousand or more are shortened,
@@ -100,6 +103,56 @@ go unnoticed.
 
 The integration gives no dates, so the card can't show how long ago something was released. CI status and HACS
 downloads would need calls to GitHub of the card's own, so it shows neither.
+
+## Unreleased work on a development branch
+
+In a repository where work is committed to a development branch and the default branch is moved only at a release, the
+default branch never has commits after the newest tag. The GitHub integration has sensors for the default branch alone,
+so the card can't see the other branch and the version stays as it is, whatever waits to be released.
+
+A RESTful sensor fills the gap. It asks GitHub, in one call, how many commits each of your repositories' `dev` branch
+is ahead of its default branch. Add it to `configuration.yaml`:
+
+```yaml
+rest:
+  - resource: https://api.github.com/graphql
+    method: POST
+    scan_interval: 1800
+    headers:
+      Authorization: !secret github_graphql_token
+      Content-Type: application/json
+    payload: >-
+      {"query": "{ viewer { repositories(first: 100, ownerAffiliations: OWNER, privacy: PUBLIC) {
+      nodes { nameWithOwner defaultBranchRef { compare(headRef: \"dev\") { aheadBy } } } } } }"}
+    sensor:
+      - name: GitHub unreleased
+        unique_id: github_unreleased
+        value_template: >-
+          {{ value_json.data.viewer.repositories.nodes | selectattr('defaultBranchRef')
+          | selectattr('defaultBranchRef.compare')
+          | selectattr('defaultBranchRef.compare.aheadBy', 'gt', 0) | list | count }}
+        json_attributes_path: $.data.viewer.repositories
+        json_attributes:
+          - nodes
+```
+
+And the token to `secrets.yaml`, with the word `Bearer` before it:
+
+```yaml
+github_graphql_token: Bearer github_pat_…
+```
+
+GitHub's GraphQL API answers only with a token. Create a fine-grained personal access token in GitHub's developer
+settings, with access to public repositories and no permissions added, which is enough for the query above. Then
+restart Home Assistant and choose the sensor as `unreleased_entity` in the card's editor.
+
+The sensor's state is the number of repositories with unreleased commits, and its `nodes` attribute is GitHub's answer
+as it came, which is what the card reads. A repository the sensor compares turns orange when its `dev` branch is ahead
+of its default branch, and only then. A repository with no `dev` branch, or one that isn't yours, is compared with its
+newest tag as before, so repositories of both kinds work on the same card.
+
+The query covers your first 100 public repositories. For a branch with another name, change `dev` in the query. For
+private repositories too, leave `privacy: PUBLIC` out and give the token access to them.
 
 ## Sizes
 

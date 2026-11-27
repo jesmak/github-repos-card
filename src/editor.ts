@@ -1,8 +1,8 @@
 /**
- * The card's visual editor: the title, which repos, which numbers, folding and what counts as something to do, what a
- * tap does, the language, how the card rounds its height to the rows of a sections view, and how a list that scrolls
- * shows that there is more. Its height mode is set in YAML only. Home Assistant's own form draws it, so the card
- * bundles no form components.
+ * The card's visual editor: the title, which repos, which numbers, folding and what counts as something to do, the
+ * sensor of unreleased work, what a tap does, the language, how the card rounds its height to the rows of a sections
+ * view, and how a list that scrolls shows that there is more. Its height mode is set in YAML only. Home Assistant's
+ * own form draws it, so the card bundles no form components.
  */
 import { LitElement, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
@@ -51,6 +51,7 @@ function schema(hass: HomeAssistant, config: GithubReposCardConfig, language: st
             schema: [{ type: "grid", name: "", schema: booleans(NUMBERS.map(({ option }) => option)) }],
         },
         { type: "expandable", name: "folding", flatten: true, schema: booleans(["fold_quiet", ...TODOS]) },
+        { name: "unreleased_entity", selector: { entity: { domain: "sensor" } } },
         {
             name: "tap",
             selector: {
